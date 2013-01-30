@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<screens:ViewScreen xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" xmlns:screens="com.views.screens.*"
+					creationComplete="viewScreen1_creationCompleteHandler(event)">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.managers.AudioManager;
+			import com.managers.ConfigurationManager;
+			import com.model.Screens;
+			import com.model.UserCache;
+			
+			import mx.events.FlexEvent;
+			
+			import spark.managers.PersistenceManager;
+			
+			
+			protected function viewScreen1_creationCompleteHandler(event:FlexEvent):void
+			{
+				// TODO Auto-generated method stub
+				var mainMov:SelectMissionMc = new SelectMissionMc();
+				mainMov.width = stage.stageWidth;
+				mainMov.scaleY = mainMov.scaleX;
+				mainSprite.addChild(mainMov);
+				
+				mainMov.btn_level1.addEventListener(MouseEvent.CLICK, levelSelectionHandler)
+				mainMov.btn_level2.addEventListener(MouseEvent.CLICK, levelSelectionHandler)
+				mainMov.btn_level3.addEventListener(MouseEvent.CLICK, levelSelectionHandler)
+					
+				var persistenceManager:PersistenceManager = new PersistenceManager();
+				var levelsStoredObject:Object = persistenceManager.getProperty("levels_cleared");
+				var levelsCleared:int = 1;
+				if(levelsStoredObject != null){
+					levelsCleared = parseInt(levelsStoredObject.toString());
+					if(levelsCleared == 0){
+						levelsCleared = 1;
+					}
+				}
+				
+				var level:int = ConfigurationManager.getInstance().currentLevel;
+				var waveObject:Object = persistenceManager.getProperty("current_wave");
+				var wave:int = 1;
+				if(waveObject != null){
+					wave = parseInt(waveObject.toString());
+					if(wave == 0){
+						wave = 1;
+					}
+				}
+				
+								
+				if(levelsCleared == 1){
+					enableButton(mainMov.btn_level1, true);
+					enableButton(mainMov.btn_level2, false);
+					enableButton(mainMov.btn_level3, false);
+				}else if(levelsCleared == 2){
+					enableButton(mainMov.btn_level1, true);
+					enableButton(mainMov.btn_level2, true);
+					enableButton(mainMov.btn_level3, false);
+				}else if(levelsCleared == 3){
+					enableButton(mainMov.btn_level1, true);
+					enableButton(mainMov.btn_level2, true);
+					enableButton(mainMov.btn_level3, true);
+				}
+				
+				var sublevel:int = Math.floor(wave/20) + 1;
+				if(sublevel == 0){
+					sublevel = 1;
+				}
+				for(var i:int = 1; i<= 3; i++){
+					var currentLevel:MovieClip = mainMov["btn_level"+i];
+					if(i == level){
+						for(var j:int=sublevel; j<=5; j++){
+							currentLevel["star"+j].gotoAndStop(2);
+						}
+					}else if(currentLevel.currentFrame == 1){
+						for(j = 1; j<=5; j++){
+							currentLevel["star"+j].gotoAndStop(2);
+						}
+					}
+				}
+				mainMov.btn_back.addEventListener(MouseEvent.CLICK, backButtonHandler);
+				mainMov.btn_settings.addEventListener(MouseEvent.CLICK, settingsButtonHandler);
+			}
+			
+			override protected function backButtonHandler(e:MouseEvent):void
+			{
+				AudioManager.getInstance().playButtonSound();
+				if(UserCache.getInstance().accessToken == ""){
+					parentApplication.changeState(Screens.INTRO_SCREEN);
+				}else{
+					parentApplication.changeState(Screens.CHALLENGE_SCREEN);
+				}
+			}
+			
+			protected function enableButton(levelButton:MovieClip, bln:Boolean):void
+			{
+				levelButton.buttonMode = bln;
+				levelButton.mouseEnabled = bln;
+				if(bln){
+					levelButton.gotoAndStop(1);
+				}else{
+					levelButton.gotoAndStop(2);
+				}
+			}
+			protected function levelSelectionHandler(event:MouseEvent):void
+			{
+				var targetLevelButton:DisplayObject = event.currentTarget as DisplayObject;
+				var level:int = parseInt(targetLevelButton.name.split("level")[1]);
+				ConfigurationManager.getInstance().currentLevel = level;
+				AudioManager.getInstance().playButtonSound();
+				parentApplication.changeState(Screens.CURRENT_SCREEN+1);
+			}
+			
+		]]>
+	</fx:Script>
+	<s:SpriteVisualElement id="mainSprite" x="0" y="0" width="100%" height="100%"/>
+</screens:ViewScreen>

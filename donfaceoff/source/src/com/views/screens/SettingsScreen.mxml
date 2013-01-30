@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<screens:ViewScreen xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" xmlns:screens="com.views.screens.*"
+					creationComplete="viewscreen1_creationCompleteHandler(event)">
+	<fx:Script>
+		<![CDATA[
+			import com.facebook.graph.FacebookMobile;
+			import com.managers.AudioManager;
+			import com.model.Screens;
+			import com.model.UserCache;
+			import com.views.components.AlertComponent;
+			
+			import flash.net.navigateToURL;
+			
+			import mx.events.FlexEvent;
+			
+			private var fbWebView:StageWebView;
+			private var alert:AlertComponent;
+			
+			protected function viewscreen1_creationCompleteHandler(event:FlexEvent):void
+			{
+				// TODO Auto-generated method stub
+				var settingsMc:SettingsMc = new SettingsMc();
+				settingsMc.width = stage.stageWidth;
+				settingsMc.scaleY = settingsMc.scaleX;
+				
+				trace("Settings:"+ settingsMc);
+				trace("Settings:"+ settingsMc.btn_back);
+				settingsMc.btn_back.addEventListener(MouseEvent.CLICK, backButtonHandler);
+				
+				var userCache:UserCache = UserCache.getInstance(); 
+				if(userCache.accessToken.length > 0){
+					settingsMc.mc_login.visible = false;
+					settingsMc.mc_logout.visible = true;
+				}else{
+					settingsMc.mc_login.visible = true;
+					settingsMc.mc_logout.visible = false;
+				}
+				
+				settingsMc.mc_login.btn_login.addEventListener(MouseEvent.CLICK, loginHandler);
+				settingsMc.mc_logout.btn_logout.addEventListener(MouseEvent.CLICK, logoutHandler);
+				settingsMc.btn_tos.addEventListener(MouseEvent.CLICK, tosClickedHandler);
+				settingsMc.btn_privacy_policy.addEventListener(MouseEvent.CLICK, privacyPolicyClickedHandler);
+				mainMov.addChild(settingsMc);
+			}
+			
+			protected function tosClickedHandler(e:MouseEvent):void
+			{
+				AudioManager.getInstance().playButtonSound();
+				navigateToURL(new URLRequest("https://play.mangogames.com/newdon/TermsOfService.html"), "_blank");
+			}
+			
+			protected function privacyPolicyClickedHandler(e:MouseEvent):void
+			{
+				AudioManager.getInstance().playButtonSound();
+				navigateToURL(new URLRequest("https://play.mangogames.com/newdon/PrivacyPolicy.html"), "_blank");
+			}
+			
+			protected function loginHandler(e:MouseEvent):void
+			{
+				AudioManager.getInstance().playButtonSound();
+				parentApplication.showBusyIndicator();
+				FacebookMobile.init("310052065687446", callbackFn);
+			}
+				
+			protected function callbackFn(success:Object, fail:Object):void
+			{
+				if(fail){
+					//No previous access token is found
+					trace("Failed - show web page for a new session");
+					fbWebView = new StageWebView();
+					fbWebView.addEventListener(ErrorEvent.ERROR, notLoadedHandler);
+					fbWebView.viewPort = new Rectangle(10, 10, stage.stageWidth - 20, stage.stageHeight-20);
+					FacebookMobile.login(onLogin, this.stage, ["read_stream", "publish_stream"], fbWebView, "wap");
+				}else if(success){
+					//Previous access token is found
+					trace("Success - already existed a session" + FacebookMobile.getSession().accessToken);
+					accessTokenFound();
+				}
+			}
+			
+			protected function onLogin(success:Object, fail:Object):void
+			{
+				if(success){
+					accessTokenFound();
+				}else if(fail){
+					raiseAlerts("Login failed. Please try again.");
+				}
+			}
+			
+			protected function notLoadedHandler(event:ErrorEvent):void
+			{
+				fbWebView.dispose();
+				raiseAlerts("Login failed. Please try again.");
+			}
+			
+			protected function removePopUpHandler(event:Event):void
+			{
+				removeElement(alert)
+				alert = null;
+			}
+			
+			protected function accessTokenFound():void
+			{
+				var userCache:UserCache = UserCache.getInstance();
+				var userObject:Object = FacebookMobile.getSession().user;
+				userCache.accessToken = FacebookMobile.getSession().accessToken;
+				userCache.fbLink = userObject.link;
+				userCache.fbUserId = userObject.id;
+				userCache.fbLoginName = userObject.username;
+				userCache.fbUserName = userObject.name;
+				userCache.fbPicture = "http://graph.facebook.com/"+ userObject.username +"/picture"
+				userCache.fbFriends = "https://graph.facebook.com/me/friends?access_token="+ userCache.accessToken;
+				userCache.loadPlayerPhoto();
+				raiseAlerts("Login successful.", alertDismissed);
+			}
+			
+			protected function alertDismissed(e:Event):void{
+				removeElement(alert)
+				alert = null;
+				backButtonHandler(null);
+			}
+			
+			private function raiseAlerts(msg:String, callbackFn:Function=null):void
+			{
+				if(alert != null){
+					removePopUpHandler(null);
+				}
+				alert = new AlertComponent();
+				alert.message = msg;
+				if(callbackFn != null){
+					alert.addEventListener(AlertComponent.OK, callbackFn);
+				}else{
+					alert.addEventListener(AlertComponent.OK, removePopUpHandler);
+				}
+				addElement(alert);
+				parentApplication.hideBusyIndicator();
+			}
+			protected function logoutHandler(e:MouseEvent):void
+			{
+				AudioManager.getInstance().playButtonSound();
+				//parentApplication.showBusyIndicator();
+				var userCache:UserCache = UserCache.getInstance();
+				
+				var webView:StageWebView = new StageWebView();
+				webView.viewPort = new Rectangle(0, 0, 1, 1);			
+				webView.stage = stage;		
+				var mysite:String = "http://play.mangogames.com/newdon/";
+				webView.loadURL("https://m.facebook.com/logout.php?confirm=1&next=" + mysite + "&access_token="+userCache.accessToken);
+				FacebookMobile.logout(logoutCallback,  mysite);
+				
+				userCache.accessToken = "";
+				userCache.fbLink = "";
+				userCache.fbUserId = "";
+				userCache.fbLoginName = "";
+				userCache.fbUserName = "";
+				userCache.fbPicture = ""
+				userCache.fbFriends = "";
+				userCache.playerPhoto = null;
+			}
+			
+			private function logoutCallback(response:Object):void 
+			{
+				//parentApplication.hideBusyIndicator();
+				if (response) {
+					trace("logged out for real");
+					UserCache.getInstance().resetChallengeData();
+					parentApplication.changeState(Screens.LOGIN_SCREEN);
+				}else {
+					trace("smthng went wrong");
+				}
+			}
+			
+			override protected function backButtonHandler(event:MouseEvent):void
+			{
+				Screens.CURRENT_SCREEN = data as int;
+				parentApplication.removeLastView();
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<s:SpriteVisualElement id="mainMov" width="100%" height="100%" />
+</screens:ViewScreen>

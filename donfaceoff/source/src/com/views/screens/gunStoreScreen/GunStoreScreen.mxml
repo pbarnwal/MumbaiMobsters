@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<screens:ViewScreen xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" xmlns:screens="com.views.screens.*"
+					xmlns:components="com.views.components.*" xmlns:local="*" 
+					xmlns:gunStoreScreen="com.views.screens.gunStoreScreen.*"
+					creationComplete="viewscreen1_creationCompleteHandler(event)">
+	<fx:Script>
+		<![CDATA[
+			import com.managers.AudioManager;
+			import com.managers.ConfigurationManager;
+			import com.managers.TransactionManager;
+			import com.model.GunModel;
+			import com.model.Screens;
+			import com.model.UserCache;
+			import com.model.Weapons;
+			import com.views.components.AlertComponent;
+			import com.views.components.renderers.WeaponItemRenderer;
+			
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			
+			import spark.components.List;
+			import spark.core.SpriteVisualElement;
+			import spark.events.IndexChangeEvent;
+			import spark.events.ViewNavigatorEvent;
+			import spark.managers.PersistenceManager;
+			
+			private var gunStoreMc:GunStoreMc;
+			
+			[Bindable]
+			private var ratio:Number;
+			
+			private var configManager:ConfigurationManager;
+			
+			private var alertComp:AlertComponent;
+			private var persistenceManager:PersistenceManager;
+			
+			protected function viewscreen1_creationCompleteHandler(event:FlexEvent):void
+			{
+				// TODO Auto-generated method stub
+				gunStoreMc = new GunStoreMc();
+				gunStoreMc.width = stage.stageWidth;
+				ratio = gunStoreMc.scaleX;
+				
+				gunStoreMc.scaleY = ratio
+				mainMov.addChild(gunStoreMc);
+				trace("gunStoreMc.btn_PlayNow:"+gunStoreMc.btn_PlayNow);
+				
+				weaponList.scaleX = ratio;
+				weaponList.scaleY = ratio;
+				
+				gunStoreMc.btn_back.addEventListener(MouseEvent.CLICK, backButtonHandler);
+				gunStoreMc.btn_settings.addEventListener(MouseEvent.CLICK, settingsButtonHandler);
+				
+				gunStoreMc.btn_PlayNow.buttonMode = true;
+				
+				gunStoreMc.btn_Buy.mouseEnabled = false;
+				gunStoreMc.btn_Buy.alpha = 0.5
+				gunStoreMc.btn_Buy.buttonMode = false;
+				
+				gunStoreMc.btn_PlayNow.addEventListener(MouseEvent.CLICK, playNowMouseHandler)
+				gunStoreMc.btn_Buy.addEventListener(MouseEvent.CLICK, buyNowHandler)
+				gunStoreMc.btn_GetCash.addEventListener(MouseEvent.CLICK, getCashHandler)
+				
+				trace("listHolderMc:"+gunStoreMc.listHolderMc);
+				trace("listHolderMc:"+gunStoreMc.listHolderMc.x);
+				trace("listHolderMc:"+gunStoreMc.listHolderMc.y);
+				trace("listHolderMc:"+gunStoreMc.listHolderMc.width);
+				trace("listHolderMc:"+gunStoreMc.listHolderMc.height);
+				
+				
+				//gunStoreMc.txt_amount.x = gunStoreMc.amountHolderMc.x * ratio;
+				//gunStoreMc.txt_amount.y = gunStoreMc.amountHolderMc.y * ratio;
+				//amount.width = gunStoreMc.amountHolderMc.width * ratio;
+				//amount.height = gunStoreMc.amountHolderMc.height * ratio;
+				
+				configManager = ConfigurationManager.getInstance();
+				trace("Account balance :"+ UserCache.getInstance().accountBalance);
+				gunStoreMc.txt_amount.text = configManager.getCurrencyFormat(UserCache.getInstance().accountBalance);
+				
+				weaponList.weaponList.addEventListener(Event.CHANGE, weaponList_changeHandler);
+				
+				var weapons:Dictionary = Weapons.getInstance().getWeaponsList();
+				var primaryWeapon:GunModel = weapons[1];
+				populateFreeGun(primaryWeapon);
+				
+				persistenceManager = new PersistenceManager();
+				
+				if(UserCache.getInstance().premiumGunOpted > 0){
+					weaponList.weaponList.removeEventListener(Event.CHANGE, weaponList_changeHandler);
+					weaponList.weaponList.enabled = false
+					weaponList.updateWeaponList();
+				}
+			}
+			
+			protected function playNowMouseHandler(event:MouseEvent):void
+			{
+				AudioManager.getInstance().playButtonSound();
+				parentApplication.changeState(Screens.CURRENT_SCREEN + 1);
+			}
+			
+			protected function buyNowHandler(event:MouseEvent):void
+			{
+				AudioManager.getInstance().playButtonSound();
+				var item:GunModel = weaponList.weaponList.selectedItem as GunModel
+				var price:int = item.costPerBullet * item.roundsPerTap * item.clipSize * item.clipSizeMultiplier;
+				trace("Price:"+ price +":balance:"+ UserCache.getInstance().accountBalance);
+				if(price > UserCache.getInstance().accountBalance){
+					gunStoreMc.btn_Buy.mouseEnabled = true;
+					gunStoreMc.btn_Buy.alpha = 1
+					gunStoreMc.btn_Buy.buttonMode = true;
+				}else{
+					
+					//var weaponsPurchased:String = (item.id +"_"+ item.clipSizeMultiplier);
+					//persistenceManager.setProperty("weapons_purchased", weaponsPurchased);
+					
+					UserCache.getInstance().premiumGunOpted = item.id;
+					UserCache.getInstance().purchasedClipSize = item.clipSizeMultiplier;
+					UserCache.getInstance().accountBalance -= price;
+					
+					gunStoreMc.txt_amount.text = configManager.getCurrencyFormat(UserCache.getInstance().accountBalance);
+					persistenceManager.setProperty("account_balance", UserCache.getInstance().accountBalance);
+					persistenceManager.save();
+					
+					gunStoreMc.btn_Buy.mouseEnabled = false;
+					gunStoreMc.btn_Buy.alpha = 0.5
+					gunStoreMc.btn_Buy.buttonMode = false;
+					
+					weaponList.weaponList.removeEventListener(Event.CHANGE, weaponList_changeHandler);
+					weaponList.weaponList.enabled = false
+					weaponList.updateWeaponList();
+					
+					alertComp = new AlertComponent();
+					alertComp.message = "Weapon Purchased";
+					alertComp.addEventListener(AlertComponent.OK, alertComponentHandler)
+					addElement(alertComp);
+					
+				}
+			}
+			
+			private function alertComponentHandler(e:Event):void
+			{
+				alertComp.removeEventListener(AlertComponent.OK, alertComponentHandler)
+				removeElement(alertComp);
+			}
+			
+			protected function getCashHandler(event:MouseEvent):void
+			{
+				AudioManager.getInstance().playButtonSound();
+				parentApplication.changeState(Screens.GET_CASH_SCREEN);
+			}
+			
+			private function getWeaponsPurchased():String
+			{
+				var persistenceManager:PersistenceManager = new PersistenceManager();
+				var weaponsPurchased:String = "";
+				if(persistenceManager.load()){
+					var weaponsProp:Object = persistenceManager.getProperty("weapons_purchased");
+					if(weaponsProp != null){
+						weaponsPurchased = weaponsProp.toString();
+					}
+				}
+				return weaponsPurchased;
+			}
+			protected function weaponList_changeHandler(event:IndexChangeEvent):void
+			{
+				if(weaponList.weaponList.selectedIndex > -1){
+					gunStoreMc.btn_Buy.mouseEnabled = true;
+					gunStoreMc.btn_Buy.alpha = 1
+					gunStoreMc.btn_Buy.buttonMode = true;
+				}else{
+					gunStoreMc.btn_Buy.mouseEnabled = false;
+					gunStoreMc.btn_Buy.alpha = 0.5
+					gunStoreMc.btn_Buy.buttonMode = false;
+				}
+				AudioManager.getInstance().playButtonSound();
+			}
+			
+			protected function populateFreeGun(primaryWeapon:GunModel):void
+			{
+				gunStoreMc.txt_gun_name.text = primaryWeapon.name;
+				gunStoreMc.txt_rof.text = String(primaryWeapon.roundsPerTap);
+				gunStoreMc.txt_damage.text = String(primaryWeapon.damagePerBullet);
+				//if(primaryWeapon.clipSizeMultiplier == 50){
+					gunStoreMc.txt_ammo.text = "Unltd";
+				//}else if(primaryWeapon.clipSizeMultiplier == 50){
+					//gunStoreMc.txt_ammo.text = "0";
+				//}else{
+					//gunStoreMc.txt_ammo.text = primaryWeapon.clipSize + " x "+ primaryWeapon.clipSizeMultiplier
+				//}
+				
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:SpriteVisualElement id="mainMov" x="0" y="0" width="100%" height="100%" />
+	<gunStoreScreen:WeaponList id="weaponList" x="0" y="0" width="100%" height="100%"/>
+	
+</screens:ViewScreen>

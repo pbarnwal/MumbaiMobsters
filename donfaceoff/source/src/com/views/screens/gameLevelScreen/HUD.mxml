@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark">
+	<fx:Script>
+		<![CDATA[
+			import com.managers.AudioManager;
+			import com.managers.ConfigurationManager;
+			import com.model.GunModel;
+			import com.model.UserCache;
+			import com.model.WaveModel;
+			import com.model.Weapons;
+			
+			import flashx.textLayout.formats.Direction;
+			
+			import mx.binding.utils.ChangeWatcher;
+			import mx.events.PropertyChangeEvent;
+			
+			[Bindable]
+			public var totalPremiumBullets:int;
+			
+			[Bindable]
+			public var premiumBulletsRemaining:int;
+			
+			private var configManager:ConfigurationManager;
+			private var gameHUD:GameHUDMc;
+			private var premiumGun:GunModel;
+			private var freeGun:GunModel;
+			
+			public var selectedGun:int
+			public var gamePaused:Boolean = false;
+			private var userCache:UserCache;
+			private var clipsRemaining:int;
+			private var freeRoundCounter:int;
+			
+			public static const GUN_UPDATED:String = "gunUpdated";
+			public static const GAME_PAUSED:String = "gamePaused";
+			public static const RELOADING_GUN:String = "reloadingGun";
+			
+			protected function hudMc_addedToStageHandler(event:Event):void
+			{
+				trace("Internal Added to stage");
+				// TODO Auto-generated method stub
+				
+				userCache = UserCache.getInstance();
+
+				gameHUD = new GameHUDMc();
+				//gameHUD.name = "GameHUD";
+				gameHUD.width = stage.stageWidth;
+				gameHUD.scaleY = gameHUD.scaleX;
+				hudMc.addChild(gameHUD);
+
+				updateTimer(0);
+				gameHUD.scoreTxt.text = "0";
+				gameHUD.waveNoTxt.text = "1";
+				gameHUD.goonsEscapedTxt.text = "0"
+				gameHUD.timerTxt.autoSize = "center";
+				freeRoundCounter = 0;
+				setGuns();
+
+				//gameHUD.freeGun.name = "freeGun";
+				//gameHUD.premiumGun.name = "premiumGun";
+				
+				gameHUD.freeGun.addEventListener(MouseEvent.CLICK, freeGunSelected);
+				gameHUD.premiumGun.addEventListener(MouseEvent.CLICK, premiumGunSelected);
+				gameHUD.gamePlayPauseMc.addEventListener(MouseEvent.CLICK, playPauseHandler)
+				selectedGun = 1;
+				updateGunSelection();
+
+				ChangeWatcher.watch(userCache, ["timer"], timerHandler);
+				ChangeWatcher.watch(userCache, ["score"], scoreHandler);
+				ChangeWatcher.watch(userCache, ["escaped"], escapedHandler);
+				ChangeWatcher.watch(WaveModel.getInstance(), ["waveId"], waveNoHandler);
+
+				var playerPhoto:Loader = userCache.playerPhoto;
+				var challengerPhoto:Loader = userCache.challengerPhoto;
+				if(playerPhoto){
+					playerPhoto.x = 0;
+					playerPhoto.y = 0;
+					playerPhoto.width = gameHUD.playerPhotoMc.photo.width;
+					playerPhoto.height = gameHUD.playerPhotoMc.photo.height;
+					gameHUD.playerPhotoMc.photo.addChild(playerPhoto);
+				}
+				if(challengerPhoto){
+					challengerPhoto.x = 0;
+					challengerPhoto.y = 0;
+					challengerPhoto.width = gameHUD.challengerPhotoMc.photo.width;
+					challengerPhoto.height = gameHUD.challengerPhotoMc.photo.height;
+					gameHUD.challengerPhotoMc.photo.addChild(challengerPhoto);
+				}
+			}
+			
+			private function playPauseHandler(e:MouseEvent):void
+			{
+				/* if(gamePaused){
+					gameHUD.gamePlayPauseMc.gotoAndStop(1);
+				}else{
+					gameHUD.gamePlayPauseMc.gotoAndStop(2);
+				} */
+				AudioManager.getInstance().playButtonSound();
+				gamePaused = !gamePaused;
+				dispatchEvent(new Event(GAME_PAUSED));
+			}
+			
+			private function timerHandler(e:PropertyChangeEvent):void
+			{
+				var newValue:Number = Number(e.newValue.toString());
+				updateTimer(newValue);
+			}
+			private function updateTimer(newValue:Number):void
+			{
+				newValue = newValue>120?120:newValue;
+				var value:Number = 120 - newValue;
+				var min:int = Math.floor(value/60)
+				var sec:Number = value - (min*60);
+				var tminutes:String = (min <= 9)? ("0"+min) : (""+min);
+				var tseconds:String = (sec <= 9)? ("0"+sec) : (""+sec);
+				//trace("Value :"+ newValue +":"+ value +"<<>>>"+ min +":"+ sec +minutes +":"+ seconds);
+				gameHUD.timerTxt.text ="TIMER " + tminutes+":"+tseconds ;
+				gameHUD.timerMc.gotoAndStop(newValue);
+			}
+			
+			private function scoreHandler(e:PropertyChangeEvent):void
+			{
+				gameHUD.scoreTxt.text = e.newValue.toString();
+			}
+			private function escapedHandler(e:PropertyChangeEvent):void
+			{
+				gameHUD.goonsEscapedTxt.text = e.newValue.toString(); 
+			}
+			private function waveNoHandler(e:PropertyChangeEvent):void
+			{
+				gameHUD.waveNoTxt.text = e.newValue.toString();
+			}
+			
+			private function setGuns():void
+			{
+				if(userCache == null){
+					trace("usercache is mill");
+				}
+				var premiumGunId:int = userCache.premiumGunOpted;
+				var purchasedClipSize:int = userCache.purchasedClipSize;
+				if(premiumGunId != 0 && purchasedClipSize != 0){
+					gameHUD.premiumGun.visible = true;
+					premiumGun = Weapons.getInstance().getWeaponById(premiumGunId);
+					gameHUD.premiumGun.gunIconMc.gotoAndStop(premiumGunId);
+					if(purchasedClipSize == 1){
+						totalPremiumBullets = premiumGun.clipSize * purchasedClipSize;
+					}else{
+						totalPremiumBullets = premiumGun.clipSize * (purchasedClipSize+1);
+					}
+					
+					premiumBulletsRemaining = premiumGun.clipSize;
+					if(purchasedClipSize == 50){
+						gameHUD.premiumGun.ammoCount.text = premiumBulletsRemaining+"/ Unltd";
+					}else{
+						trace("totalPremiumBullets :" + totalPremiumBullets);
+						gameHUD.premiumGun.ammoCount.text = premiumBulletsRemaining+"/"+totalPremiumBullets;
+					}
+					
+				}else{
+					gameHUD.premiumGun.visible = false;
+				}
+				
+				freeGun = Weapons.getInstance().getWeaponById(1);
+				freeRoundCounter = freeGun.clipSize;
+				gameHUD.freeGun.ammoCount.text = freeRoundCounter + " / Unltd";
+			}
+			
+			public function updateFire(gunType:int):void
+			{
+				if(gunType > 1)
+				{
+					if(userCache.purchasedClipSize != 50)
+					{
+						premiumBulletsRemaining -= premiumGun.roundsPerTap;
+						if(premiumBulletsRemaining <= 0)
+						{
+							premiumBulletsRemaining = 0;
+							dispatchEvent(new Event(RELOADING_GUN));
+							totalPremiumBullets -= premiumGun.clipSize
+							if(totalPremiumBullets > 0){
+								premiumBulletsRemaining = premiumGun.clipSize;
+							}
+						}
+						//var newClipsRemaining:int = Math.floor(premiumBulletsRemaining/premiumGun.clipSize);
+						gameHUD.premiumGun.ammoCount.text = premiumBulletsRemaining+"/"+totalPremiumBullets;
+						
+						if(totalPremiumBullets == 0){
+							userCache.premiumGunOpted = 0;
+							userCache.purchasedClipSize = 0;
+							gameHUD.premiumGun.removeEventListener(MouseEvent.CLICK, premiumGunSelected);
+							selectedGun = 1;
+							updateGunSelection();
+						}
+					}
+					else
+					{
+						premiumBulletsRemaining -= premiumGun.roundsPerTap;
+						if(premiumBulletsRemaining <= 0)
+						{
+							dispatchEvent(new Event(RELOADING_GUN));
+							premiumBulletsRemaining = premiumGun.clipSize
+						}
+						gameHUD.premiumGun.ammoCount.text = premiumBulletsRemaining+"/ Unltd";
+					}
+				}
+				else if(gunType == 1)
+				{
+					freeRoundCounter -= freeGun.roundsPerTap;
+					if(freeRoundCounter <= 0)
+					{
+						dispatchEvent(new Event(RELOADING_GUN));
+						freeRoundCounter = freeGun.clipSize
+					}
+					gameHUD.freeGun.ammoCount.text = freeRoundCounter + " / Unltd";
+				}
+			}
+			
+			private function premiumGunSelected(e:MouseEvent):void
+			{
+				AudioManager.getInstance().playButtonSound();
+				selectedGun = premiumGun.id
+				updateGunSelection();
+			}
+			
+			private function freeGunSelected(e:MouseEvent):void
+			{
+				AudioManager.getInstance().playButtonSound();
+				selectedGun = 1;
+				updateGunSelection();
+			}
+			
+			public function updateGunSelection():void
+			{
+				if(selectedGun == 1){
+					gameHUD.premiumGun.gunActiveIndicator.visible = false;
+					gameHUD.freeGun.gunActiveIndicator.visible = true;
+				}else{
+					gameHUD.premiumGun.gunActiveIndicator.visible = true;
+					gameHUD.freeGun.gunActiveIndicator.visible = false;
+				}
+				dispatchEvent(new Event(GUN_UPDATED));
+			}
+			
+			public function resetHUD():void
+			{
+				gamePaused = false;
+				gameHUD.gamePlayPauseMc.gotoAndStop(1);
+			}
+			
+			public function getFreeGun():MovieClip
+			{
+				return gameHUD.freeGun;
+			}
+			public function getPremiumGun():MovieClip
+			{
+				return gameHUD.premiumGun;
+			}
+			public function getPlayPauseMc():MovieClip
+			{
+				return gameHUD.gamePlayPauseMc;
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:layout>
+		<s:HorizontalLayout horizontalAlign="right" paddingRight="30" />
+	</s:layout>
+	<!--<s:VGroup horizontalAlign="right">
+		<s:Label text="Wave No: {WaveModel.getInstance().waveId}" color="0xffffff" fontSize="20" maxDisplayedLines="1" />
+		<s:Label text="Timer : {UserCache.getInstance().timer}" color="0xffffff" fontSize="20" maxDisplayedLines="1"/>
+		<s:Label text="Score : {UserCache.getInstance().score}" color="0xffffff" fontSize="20" maxDisplayedLines="1"/>
+		<s:Label text="Kill : {UserCache.getInstance().kills}" color="0xffffff" fontSize="20" maxDisplayedLines="1"/>
+	</s:VGroup>-->
+	<s:SpriteVisualElement id="hudMc" width="100%" height="100%" addedToStage="hudMc_addedToStageHandler(event)"/>
+</s:Group>

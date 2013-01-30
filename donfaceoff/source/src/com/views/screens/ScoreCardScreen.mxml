@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<screens:ViewScreen xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" xmlns:screens="com.views.screens.*"
+					creationComplete="viewscreen1_creationCompleteHandler(event)">
+	<fx:Script>
+		<![CDATA[
+			import com.managers.AudioManager;
+			import com.managers.ConfigurationManager;
+			import com.model.Screens;
+			import com.model.UserCache;
+			
+			import mx.events.FlexEvent;
+			
+			import spark.managers.PersistenceManager;
+			
+			private var scoreCardMc:ScoreCardMc
+			
+			private var persistenceManager:PersistenceManager;
+			
+			[Bindable]
+			private var ratio:Number;
+			
+			private var userCache:UserCache;
+			
+			protected function viewscreen1_creationCompleteHandler(event:FlexEvent):void
+			{
+				// TODO Auto-generated method stub
+				scoreCardMc = new ScoreCardMc();
+				scoreCardMc.width = stage.stageWidth;
+				ratio = scoreCardMc.scaleX;
+				scoreCardMc.scaleY = ratio;
+				mainMov.addChild(scoreCardMc);
+				
+				userCache = UserCache.getInstance(); 
+				var configManager:ConfigurationManager = ConfigurationManager.getInstance();
+				var kills:int = userCache.kills;
+				var headShots:int = userCache.headShots;
+				var multiKill:int = userCache.multikill;
+				var timeMultiplier:int = userCache.timeMultiplierBonus;
+				var totalScore:int = kills + headShots + multiKill + timeMultiplier
+					
+				scoreCardMc.txtKills.text = configManager.getCurrencyFormat(kills, false);
+				scoreCardMc.txtHeadShot.text = configManager.getCurrencyFormat(headShots, false);
+				scoreCardMc.txtMultiKill.text = configManager.getCurrencyFormat(multiKill, false);
+				scoreCardMc.txtTimeMultiplier.text = configManager.getCurrencyFormat(timeMultiplier, false);
+				
+				scoreCardMc.txtTotalScore.text = configManager.getCurrencyFormat(totalScore, false);
+				scoreCardMc.txtTotalCash.text = configManager.getCurrencyFormat(totalScore * 1.5)
+				
+				
+				scoreCardMc.btn_settings.addEventListener(MouseEvent.CLICK, settingsButtonHandler);
+				
+				if(userCache.accessToken ==""){
+					scoreCardMc.btn_fbContinue.visible = false
+				}else{
+					scoreCardMc.btn_fbContinue.visible = true;
+				}
+				
+				scoreCardMc.btn_back.addEventListener(MouseEvent.CLICK, backButtonHandler);
+				scoreCardMc.btn_fbContinue.btn_checkbox.addEventListener(MouseEvent.CLICK, fbSelectionHandler);
+				scoreCardMc.btn_fbContinue.btn_continue.addEventListener(MouseEvent.CLICK, fbContinueHandler);
+				scoreCardMc.btn_playagain.addEventListener(MouseEvent.CLICK, playAgainHandler);
+				//scoreCardMc.btn_leaderboard.addEventListener(MouseEvent.CLICK, leaderBoardHandler);
+				
+				userCache.accountBalance += (userCache.score * 1.5);
+				
+				if(userCache.attemptingNewChallenge){
+					scoreCardMc.btn_back.visible = false
+					userCache.sendChallengeToFriends(challengeSentHandler);
+				}else if(userCache.attemptingPendingChallenge){
+					scoreCardMc.btn_back.visible = true;
+				}else{
+					scoreCardMc.btn_back.visible = false
+				}
+				
+				persistenceManager = new PersistenceManager();
+				
+				var currentLevel:int = configManager.currentLevel;
+				var wavesCleared:int = Math.floor(userCache.wave / 20) + 1;
+				
+				var levelsStoredObject:Object = persistenceManager.getProperty("levels_cleared");
+				var levelsCleared:int = 1;
+				if(levelsStoredObject != null){
+					levelsCleared = parseInt(levelsStoredObject.toString());
+					if(levelsCleared == 0){
+						levelsCleared = 1;
+					}
+				}
+				
+				var appLevelName:String = "";
+				if(currentLevel == 1)
+				{
+					appLevelName = "Factory";
+					if(wavesCleared >= 30 && levelsCleared < 2){
+						levelsCleared = 2;
+					}
+				}
+				else if(currentLevel == 2)
+				{
+					appLevelName = "AirPort";
+					if(wavesCleared >= 75 && levelsCleared < 3){
+						levelsCleared = 3;
+					}
+				}
+				else if(currentLevel == 3)
+				{
+					appLevelName = "Dockyard";
+				}
+				
+				scoreCardMc.txtLevelName.text = appLevelName;
+				
+				for(var i:int = wavesCleared; i<= 5; i++){
+					scoreCardMc["star"+i].gotoAndStop(2);
+				}
+				
+				persistenceManager.setProperty("account_balance", userCache.accountBalance );
+				persistenceManager.setProperty("current_level", currentLevel);
+				persistenceManager.setProperty("levels_cleared", levelsCleared);
+				persistenceManager.setProperty("current_wave", UserCache.getInstance().wave);
+				persistenceManager.save();
+				
+				/* scoreCardMc.but_level2.addEventListener(MouseEvent.CLICK, setLevel2Handler);
+				scoreCardMc.but_level3.addEventListener(MouseEvent.CLICK, setLevel3Handler); */
+			}
+			
+			override protected function backButtonHandler(event:MouseEvent):void
+			{
+				parentApplication.changeState(Screens.CHALLENGE_RESULT_SCREEN);
+			}
+			
+			/* protected function setLevel2Handler(e:MouseEvent):void
+			{
+				if(persistenceManager == null){
+					persistenceManager = new PersistenceManager();
+				}
+				persistenceManager.setProperty("levels_cleared", 2);
+				persistenceManager.setProperty("current_wave", 25);
+				persistenceManager.save();
+			}
+			
+			protected function setLevel3Handler(e:MouseEvent):void
+			{
+				if(persistenceManager == null){
+					persistenceManager = new PersistenceManager();
+				}
+				persistenceManager.setProperty("levels_cleared", 3);
+				persistenceManager.setProperty("current_wave", 45);
+				persistenceManager.save();
+			}
+			 */
+			protected function challengeSentHandler(e:Event):void
+			{
+				trace("Challenge is sent");
+				
+			}
+			
+			/* protected function leaderBoardHandler(e:MouseEvent):void
+			{
+				
+			} */
+			
+			protected function fbSelectionHandler(e:MouseEvent):void
+			{
+				AudioManager.getInstance().playButtonSound();
+				var currFrame:int = scoreCardMc.btn_fbContinue.btn_checkbox.currentFrame;
+				if(currFrame == 1){
+					scoreCardMc.btn_fbContinue.btn_checkbox.gotoAndStop(2);
+				}else{
+					scoreCardMc.btn_fbContinue.btn_checkbox.gotoAndStop(1);
+				}
+			}
+			
+			protected function fbContinueHandler(e:MouseEvent):void
+			{
+				AudioManager.getInstance().playButtonSound();
+				var currFrame:int = scoreCardMc.btn_fbContinue.btn_checkbox.currentFrame;
+				var userCache:UserCache = UserCache.getInstance();
+				if( currFrame== 2){
+					userCache.sendFeedFBUser("I just played Don FaceOff and defeated Vardhan's goons. Try beating my score!");
+				}
+				userCache.resetChallengeData();
+				parentApplication.changeState(Screens.CHALLENGE_SCREEN);
+				
+			}
+			
+			protected function playAgainHandler(e:MouseEvent):void
+			{
+				AudioManager.getInstance().playButtonSound();
+				var userCache:UserCache = UserCache.getInstance();
+				userCache.resetArmory();
+				parentApplication.changeState(Screens.MISSION_SELECTION_SCREEN);
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:SpriteVisualElement id="mainMov" x="0" y="0" width="100%" height="100%" />
+</screens:ViewScreen>

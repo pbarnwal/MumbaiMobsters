@@ -1,0 +1,372 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:SpriteVisualElement xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" xmlns:local="*"
+					   addedToStage="spritevisualelement1_addedToStageHandler(event)">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.model.UserCache;
+			
+			//Please dont delete these declaration, these are not used in the game but they enforce compiler to compile these classes
+			private var p1mov:P1;
+			private var p2mov:P2;
+			private var p3mov:P3;
+			private var p4mov:P4;
+			private var p5mov:P5;
+			private var p6mov:P6;
+			private var p7mov:P7;
+			private var p8mov:P8;
+			private var p9mov:P9;
+			private var p10mov:P10;
+			private var p11mov:P11;
+			private var p12mov:P12;
+			private var p13mov:P13;
+			private var p14mov:P14;
+			private var p15mov:P15;
+			private var p16mov:P16;
+			private var p17mov:P17;
+			private var p18mov:P18;
+			private var p19mov:P19;
+			private var p20mov:P20;
+			private var p21mov:P21;
+			private var p22mov:P22;
+			private var p23mov:P23;
+			private var p24mov:P24;
+			private var p25mov:P25;
+			private var p26mov:P26;
+			private var p27mov:P27;
+			private var p28mov:P28;
+			private var p29mov:P29;
+			
+			import com.managers.ConfigurationManager;
+			import com.model.CharacterModel;
+			import com.model.PathAnimations;
+			import com.model.WaveModel;
+			
+			import flash.display.MovieClip;
+			import flash.events.Event;
+			import flash.utils.getDefinitionByName;
+			
+			import org.osmf.events.TimeEvent;
+			
+			private var currentWave:int = 1;
+			private var currentCharacter:int = 0;
+			
+			[Bindable]
+			private var waveModel:WaveModel;
+			private var characterModel:CharacterModel;
+			
+			private var waveTimer:Timer;
+			private var characterTimer:Timer;
+			
+			static public const STOP_TIMER:String = "stopTimer";
+			static public const RESUME_TIMER:String = "resumeTimer";
+			static public const SOLDIER_FIRE_AT_PLAYER:String = "soldierFireAtPlayer";
+			static public const BODYGUARD_FIRE_AT_PLAYER:String = "bodyguardFireAtPlayer";
+			static public const ELITEGUARD_FIRE_AT_PLAYER:String = "eliteguardFireAtPlayer";
+			static public const FIRING_STARTS_HERE:String = "firingStartsHere";
+			static public const FIRING_ENDS_HERE:String = "firingEndsHere";
+			static public const ENEMY_DEAD:String = "dead";
+			private var configManager:ConfigurationManager;
+			
+			private var gameIsOver:Boolean = false;
+			
+			//private var killCharArr:Array;
+			
+			public function init():void
+			{
+				graphics.beginFill(0x0000ff,0);
+				graphics.drawRect(0,0, stage.stageWidth, stage.stageHeight);
+				graphics.endFill();
+				
+				var scaleXVal:Number = stage.stageWidth/2048;
+				this.scaleY = scaleXVal;
+				scaleX = scaleXVal;
+				
+				gameIsOver = false;
+				configManager = ConfigurationManager.getInstance();
+				waveModel = WaveModel.getInstance();
+				waveModel.generateNewWave();
+				characterTimer = new Timer(ConfigurationManager.getInstance().characterTimerCount);
+				characterTimer.addEventListener(TimerEvent.TIMER, characterTimerHandler);
+				characterTimer.start();
+			}
+			
+			protected function characterTimerHandler(e:TimerEvent):void
+			{
+				if (currentCharacter < waveModel.enemies.length)
+				{
+					spawnNewCharacter();
+					
+				}
+				else
+				{	
+					//this condition should not come
+					trace("Timer overrunning");
+				}
+			}
+			
+			public function checkConditionToGenerateNewWave():void
+			{
+				if (currentCharacter == waveModel.enemies.length)
+				{
+					characterTimer.stop();
+					characterTimer.reset();
+					generateNewWave()
+					dispatchEvent(new Event(STOP_TIMER));
+				}
+			}
+			
+			private function generateNewWave():void
+			{
+				if(waveTimer){
+					waveTimer.stop();
+					waveTimer.reset();
+				}
+				waveTimer = new Timer(configManager.waveTimerCount);
+				waveTimer.addEventListener(TimerEvent.TIMER, waveTimerHandler);
+				waveTimer.start();
+			}
+			
+			private function waveTimerHandler(e:Event):void 
+			{
+				trace("Generating new wave");
+				dispatchEvent(new Event(RESUME_TIMER));
+				waveTimer.stop();
+				waveTimer.reset();
+				waveTimer = null;
+				waveModel.generateNewWave();
+				currentCharacter = 0;
+				spawnNewCharacter();
+				characterTimer.start();
+			}
+			
+			public function spawnNewCharacter():void 
+			{
+				characterModel = waveModel.enemies[currentCharacter];
+				currentCharacter++;
+				
+				var charAnimInfo:XMLList = PathAnimations.getInstance().getAnimation();
+				//If character animation info comes null, it means that the XML node of the current level is not populated in XML ie no paths in the level. 
+				if(charAnimInfo == null){
+					return;
+				}
+				
+				var Cls:Class = getDefinitionByName(charAnimInfo.@name) as Class;
+				var char:MovieClip = new Cls() as MovieClip;
+				char["dead"] = false;
+				if(charAnimInfo.@flip == "true"){
+					var trans:Transform = new Transform(char);
+					trans.matrix = new Matrix(-1,0,0,1,int(charAnimInfo.@x),int(charAnimInfo.@y));
+					char.transform = trans;
+				}
+				char.x = int(charAnimInfo.@x);
+				char.y = int(charAnimInfo.@y);
+				char["model"] = characterModel;
+				char.addEventListener(Event.ENTER_FRAME, animEnterFrameHandler );
+				char.addEventListener(FIRING_STARTS_HERE, firingStartHandler);
+				char.addEventListener(FIRING_ENDS_HERE, firingEndHandler);
+				char.addEventListener(Event.REMOVED, checkAnimRemoved)
+				char.addEventListener(ENEMY_DEAD, deadEvent)
+				char.addEventListener(SOLDIER_FIRE_AT_PLAYER, soldierFireHandler);
+				char.addEventListener(BODYGUARD_FIRE_AT_PLAYER, bodyGuardFireHandler);
+				
+				if(characterModel.type == 1){
+					char.ch.gotoAndStop(1)
+				}else if(characterModel.type == 2){
+					char.ch.gotoAndStop(2)
+				}else if (characterModel.type == 3) {
+					char.ch.gotoAndStop(3)
+				}
+				addChild(char);
+				char.play();
+			}
+			private function firingStartHandler(e:Event):void
+			{
+				var character:MovieClip = MovieClip(e.target);
+				character["fireAllowed"] = true;
+			}
+			private function firingEndHandler(e:Event):void
+			{
+				var character:MovieClip = MovieClip(e.target);
+				character["fireAllowed"] = false;
+			}
+			private function bodyGuardFireHandler(e:Event):void
+			{
+				var character:MovieClip = MovieClip(e.target);
+				var charModel:CharacterModel = character["model"];
+				if(charModel.type == 2){
+					character.stop();
+					character.ch.man1.gotoAndStop(2);
+					character.addEventListener("pauseOver", characterPauseHandler);
+				}
+			}
+			
+			private function soldierFireHandler(e:Event):void 
+			{
+				var character:MovieClip = MovieClip(e.target);
+				var charModel:CharacterModel = character["model"];
+				if(charModel.type == 1){
+					character.stop();
+					character.ch.man1.gotoAndStop(2);
+					character.addEventListener("pauseOver", characterPauseHandler);
+				}
+			}
+			
+			protected function characterPauseHandler(e:Event):void
+			{
+				e.currentTarget.removeEventListener("pauseOver", characterPauseHandler);
+				var character:MovieClip = MovieClip(e.target.parent.parent.parent)
+				if(character != null && this.contains(character)){
+					var charModel:CharacterModel = character["model"];
+					if(charModel.type == 1 || charModel.type == 2){
+						character.play();
+						character.ch.man1.gotoAndStop(1);
+					}
+				}	
+			}
+			
+			protected function deadEvent(e:Event):void
+			{
+				var character:MovieClip = MovieClip(e.target.parent.parent.parent);
+				if(character != null && this.contains(character)){
+					removeChild(character)
+				}
+				
+			}
+			protected function checkAnimRemoved(e:Event):void
+			{
+				var char:MovieClip = e.target as MovieClip;
+				if(char != null){
+					if(char.hasEventListener(Event.REMOVED)){
+						char.removeEventListener(Event.REMOVED, checkAnimRemoved)
+					}
+					if(char.hasEventListener(Event.ENTER_FRAME)){
+						char.removeEventListener(Event.ENTER_FRAME, animEnterFrameHandler);
+					}
+				}
+			}
+			
+			protected function animEnterFrameHandler(e:Event):void
+			{
+				var mc:MovieClip = e.target as MovieClip;
+				/* if(gameIsOver){
+					if(mc.hasEventListener(Event.ENTER_FRAME)){
+						mc.removeEventListener(Event.ENTER_FRAME, animEnterFrameHandler);
+					}
+					if (mc.currentFrame == mc.totalFrames && this.contains(mc)) {
+						removeChild(mc);
+					}
+					return;
+				} */
+				var charModel:CharacterModel = mc["model"] as CharacterModel;
+				if(charModel.type == 3 && mc["fireAllowed"]){
+					if ((mc.currentFrame % (30 * configManager.eliteguardFiringTimer/1000)) == 0) {
+						mc.dispatchEvent(new Event(ELITEGUARD_FIRE_AT_PLAYER, true));
+					}
+				}
+				if (mc.currentFrame == mc.totalFrames && this.contains(mc)) {
+					characterSkipped(charModel)
+					removeChild(mc);
+					if(mc.hasEventListener(Event.ENTER_FRAME)){
+						mc.removeEventListener(Event.ENTER_FRAME, animEnterFrameHandler);
+					}
+					checkConditionToGenerateNewWave();
+				}
+			}
+			
+			private function characterSkipped(charModel:CharacterModel):void 
+			{
+				UserCache.getInstance().escaped++;
+			}
+			
+			public function reset():void
+			{
+				if(characterTimer){
+					characterTimer.stop();
+					characterTimer.reset();
+				}
+				if(waveTimer){
+					waveTimer.stop();
+					waveTimer.reset();
+					waveTimer.removeEventListener(TimerEvent.TIMER, waveTimerHandler);
+				}
+				currentCharacter = 0;
+				currentWave = 1;
+				//gameIsOver = true
+				for(var i:int = 0; i<this.numChildren; i++){
+					var dispObject:DisplayObject = getChildAt(0) 
+					var mc:MovieClip = dispObject as MovieClip;
+					if(mc.hasEventListener(Event.ENTER_FRAME)){
+						mc.removeEventListener(Event.ENTER_FRAME, animEnterFrameHandler);
+					}
+					removeChildAt(0);
+				}
+				//waveModel.resetCache();
+			}
+			
+			public function changeLevel():void
+			{
+				//gameIsOver = false;
+				waveModel.generateNewWave();
+				if(characterTimer){
+					characterTimer.start();
+				}
+			}
+			
+			protected function spritevisualelement1_addedToStageHandler(event:Event):void
+			{
+				// TODO Auto-generated method stub
+				
+			}
+			
+			public function resumeGame():void
+			{
+				if(characterTimer){
+					characterTimer.start();
+				}
+				if(waveTimer != null ){
+					waveTimer.start();
+				}
+				for(var i:int = 0; i<this.numChildren; i++){
+					var dispObject:DisplayObject = getChildAt(i) 
+					var mc:MovieClip = dispObject as MovieClip;
+					if(mc.currentFrame < mc.totalFrames){
+						mc.play();
+						/* if(mc.ch.man1.model){
+							if(mc.ch.man1.model.currentFrame < 24 ){
+								mc.ch.man1.model.play();
+							}
+						} */
+						if(!mc.hasEventListener(Event.ENTER_FRAME)){
+							mc.addEventListener(Event.ENTER_FRAME, animEnterFrameHandler);
+						}
+					}
+				}
+			}
+			
+			public function pauseGame():void
+			{
+				if(characterTimer){
+					characterTimer.stop();
+				}
+				if(waveTimer != null){
+					waveTimer.stop();
+				}
+				for(var i:int = 0; i<this.numChildren; i++){
+					var dispObject:DisplayObject = getChildAt(i) 
+					var mc:MovieClip = dispObject as MovieClip;
+					mc.stop();
+					/* if(mc.ch.man1.model){
+						mc.ch.man1.model.stop();
+					} */
+					if(mc.hasEventListener(Event.ENTER_FRAME)){
+						mc.removeEventListener(Event.ENTER_FRAME, animEnterFrameHandler);
+					}
+				}
+			}
+		]]>
+	</fx:Script>
+</s:SpriteVisualElement>

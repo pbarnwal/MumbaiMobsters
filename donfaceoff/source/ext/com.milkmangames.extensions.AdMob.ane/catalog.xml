@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding ="utf-8"?>
+<swc xmlns="http://www.adobe.com/flash/swccatalog/9">
+  <versions>
+    <swc version="1.2" />
+    <flex version="4.5.1" build="21328" minimumSupportedVersion="3.0.0" />
+  </versions>
+  <features>
+    <feature-script-deps />
+    <feature-files />
+  </features>
+  <libraries>
+    <library path="library.swf">
+      <script name="com/milkmangames/nativeextensions/AdMob" mod="1348687889943" signatureChecksum="357555775" >
+        <def id="com.milkmangames.nativeextensions:AdMob" /> 
+        <dep id="com.milkmangames.nativeextensions:AdMobAdType" type="e" /> 
+        <dep id="com.milkmangames.nativeextensions.events:AdMobEvent" type="e" /> 
+        <dep id="com.milkmangames.nativeextensions.events:AdMobErrorEvent" type="e" /> 
+        <dep id="flash.events:EventDispatcher" type="e" /> 
+        <dep id="com.milkmangames.nativeextensions:AdMobAlignment" type="e" /> 
+        <dep id="ArgumentError" type="e" /> 
+        <dep id="flash.system:Capabilities" type="e" /> 
+        <dep id="flash.events:StatusEvent" type="e" /> 
+        <dep id="flash.external:ExtensionContext" type="e" /> 
+        <dep id="Error" type="e" /> 
+        <dep id="flash.events:EventDispatcher" type="s" /> 
+        <dep id="flash.geom:Rectangle" type="s" /> 
+        <dep id="flash.events:StatusEvent" type="s" /> 
+        <dep id="flash.external:ExtensionContext" type="s" /> 
+        <dep id="AS3" type="n" /> 
+        <dep id="Object" type="i" /> 
+      </script>
+      <script name="_b27061eabe7efecc4222a40eb4b4ff3589f79daa1b62e89e679c5f67bb36ec51_flash_display_Sprite" mod="1348688359768" signatureChecksum="4259937417" >
+        <def id="_b27061eabe7efecc4222a40eb4b4ff3589f79daa1b62e89e679c5f67bb36ec51_flash_display_Sprite" /> 
+        <dep id="flash.system:Security" type="e" /> 
+        <dep id="AS3" type="n" /> 
+        <dep id="flash.display:Sprite" type="i" /> 
+      </script>
+      <script name="com/milkmangames/nativeextensions/AdMobAdType" mod="1348355477747" signatureChecksum="1310158143" >
+        <def id="com.milkmangames.nativeextensions:AdMobAdType" /> 
+        <dep id="ArgumentError" type="e" /> 
+        <dep id="flash.geom:Rectangle" type="e" /> 
+        <dep id="flash.system:Capabilities" type="e" /> 
+        <dep id="Math" type="e" /> 
+        <dep id="Error" type="e" /> 
+        <dep id="flash.geom:Rectangle" type="s" /> 
+        <dep id="AS3" type="n" /> 
+        <dep id="Object" type="i" /> 
+      </script>
+      <script name="com/milkmangames/nativeextensions/events/AdMobErrorEvent" mod="1347818885501" signatureChecksum="2865863157" >
+        <def id="com.milkmangames.nativeextensions.events:AdMobErrorEvent" /> 
+        <dep id="flash.events:Event" type="s" /> 
+        <dep id="AS3" type="n" /> 
+        <dep id="flash.events:ErrorEvent" type="i" /> 
+      </script>
+      <script name="com/milkmangames/nativeextensions/AdMobAlignment" mod="1347818881865" signatureChecksum="4274475084" >
+        <def id="com.milkmangames.nativeextensions:AdMobAlignment" /> 
+        <dep id="AS3" type="n" /> 
+        <dep id="Object" type="i" /> 
+      </script>
+      <script name="com/milkmangames/nativeextensions/events/AdMobEvent" mod="1347818888261" signatureChecksum="3559859699" >
+        <def id="com.milkmangames.nativeextensions.events:AdMobEvent" /> 
+        <dep id="flash.geom:Rectangle" type="s" /> 
+        <dep id="AS3" type="n" /> 
+        <dep id="flash.events:Event" type="i" /> 
+      </script>
+      <digests>
+        <digest type="SHA-256" signed="false" value="cd0e5ce04d749508ac0dc37e81de42874880504d11761cbf5140c2bf44cda95f"   />
+      </digests>
+    </library>
+  </libraries>
+  <files>
+  </files>
+</swc>

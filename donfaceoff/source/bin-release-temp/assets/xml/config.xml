@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configurations>
+	<weapons>
+		<weapon>
+			<id>1</id>
+			<symbolName>Gun1</symbolName>
+			<icon>assets/images/weapons/free_icon.png</icon>
+			<name>Desert Eagle</name>
+			<damagePerBullet>50</damagePerBullet>
+			<clipSize>8</clipSize>
+			<roundsPerMin>60</roundsPerMin>
+			<roundsPerTap>1</roundsPerTap>
+			<costPerBullet>0</costPerBullet>
+		</weapon>
+		<weapon>
+			<id>2</id>
+			<symbolName>Gun3</symbolName>
+			<icon>assets/images/weapons/free_icon.png</icon>
+			<name><![CDATA[Heckler & Koch MP5]]></name>
+			<damagePerBullet>25</damagePerBullet>
+			<clipSize>30</clipSize>
+			<roundsPerMin>180</roundsPerMin>
+			<roundsPerTap>3</roundsPerTap>
+			<costPerBullet>25</costPerBullet>
+		</weapon>
+		<weapon>
+			<id>3</id>
+			<symbolName>Gun4</symbolName>
+			<icon>assets/images/weapons/free_icon.png</icon>
+			<name>FN P90</name>
+			<damagePerBullet>30</damagePerBullet>
+			<clipSize>50</clipSize>
+			<roundsPerMin>240</roundsPerMin>
+			<roundsPerTap>4</roundsPerTap>
+			<costPerBullet>30</costPerBullet>
+		</weapon>
+		<weapon>
+			<id>4</id>
+			<symbolName>Gun5</symbolName>
+			<type>5</type>
+			<icon>assets/images/weapons/free_icon.png</icon>
+			<name>AK-47</name>
+			<damagePerBullet>35</damagePerBullet>
+			<clipSize>30</clipSize>
+			<roundsPerMin>120</roundsPerMin>
+			<roundsPerTap>2</roundsPerTap>
+			<costPerBullet>35</costPerBullet>
+		</weapon>
+	</weapons>
+	<timers>
+		<characterTimer>2000</characterTimer>
+		<waveTimer>5000</waveTimer>
+		<eliteguardTimer>1000</eliteguardTimer>
+		<gameTimer>120000</gameTimer>
+		<delayInGameTimerStart>2000</delayInGameTimerStart>
+		<multikillTimer>2000</multikillTimer>
+	</timers>
+	<characters>
+		<character>
+			<type>1</type>
+			<healthPoints>50</healthPoints>
+			<killPoints>100</killPoints>
+			<timePenalty>2</timePenalty>
+			<timeBonus>3</timeBonus>
+			<timePointsMultiplier>80</timePointsMultiplier>
+			<multiKillBonus>50</multiKillBonus>
+		</character>
+		<character>
+			<type>2</type>
+			<healthPoints>100</healthPoints>
+			<killPoints>250</killPoints>
+			<timePenalty>3</timePenalty>
+			<timeBonus>5</timeBonus>
+			<timePointsMultiplier>200</timePointsMultiplier>
+			<multiKillBonus>125</multiKillBonus>
+		</character>
+		<character>
+			<type>3</type>
+			<healthPoints>150</healthPoints>
+			<killPoints>600</killPoints>
+			<timePenalty>1</timePenalty>
+			<timeBonus>10</timeBonus>
+			<timePointsMultiplier>480</timePointsMultiplier>
+			<multiKillBonus>300</multiKillBonus>
+		</character>
+	</characters>
+	<waves>
+		<totalWaves>100</totalWaves></waves>
+	<pathAnimations>
+		<level1>
+			<path x='1046' y='782' name='P1'/>
+			<path x='1046' y='782' name='P2'/>
+			<path x='1046' y='857' name='P3'/>
+			<path x='1046' y='857' name='P4'/>
+			<path x='764' y='1617' name='P5'/>
+			<path x='764' y='1617' name='P6'/>
+			<path x='764' y='1617' name='P7'/>
+			<path x='764' y='1617' name='P8'/>
+		</level1>
+		<level2>
+			<path x='1046' y='1017' name='P9'/>
+			<path x='1046' y='1017' name='P10'/>
+			<path x='1046' y='1017' name='P11'/>
+			<path x='1046' y='1017' name='P12'/>
+			<path x='294' y='1017' name='P13' flip="true"/>
+			<path x='294' y='1017' name='P14' flip="true"/>
+			<path x='294' y='1017' name='P15' flip="true"/>
+			<path x='294' y='1017' name='P16' flip="true"/>
+			<path x='1046' y='1017' name='P17'/>
+			<path x='1046' y='1017' name='P18'/>
+			<path x='1046' y='1017' name='P19'/>
+			<path x='759' y='1617' name='P20'/>
+		</level2>
+		<level3>
+			<path x='1046' y='782' name='P21'/>
+			<path x='294' y='1017' name='P22' flip="true"/>
+			<path x='294' y='1017' name='P23' flip="true"/>
+			<path x='1046' y='1232' name='P24'/>
+			<path x='1046' y='1232' name='P25'/>
+			<path x='1046' y='1232' name='P26'/>
+			<path x='294' y='1017' name='P27' flip="true"/>
+			<path x='289' y='1017' name='P28' flip="true"/>
+			<path x='289' y='1017' name='P29'/>
+		</level3>
+	</pathAnimations>
+	<server ip="http://api.mangogames.in:3000/" />
+	<levelImages>
+		<level1>assets/images/Faceofflevel01.png</level1>
+		<level2>assets/images/Faceofflevel02.png</level2>
+		<level3>assets/images/Faceofflevel03.png</level3>
+	</levelImages>
+		
+</configurations>

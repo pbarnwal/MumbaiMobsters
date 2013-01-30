@@ -1,0 +1,493 @@
+<?xml version="1.0" encoding="utf-8"?>
+<screens:ViewScreen xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" xmlns:screens="com.views.screens.*" 
+					xmlns:weapons="com.views.weapons.*"
+					xmlns:characters="com.views.characters.*" 
+					xmlns:huds="com.views.huds.*" xmlns:debug="com.views.debug.*" 
+					xmlns:gameLevelScreen="com.views.screens.gameLevelScreen.*"
+					creationComplete="viewscreen1_creationCompleteHandler(event)"
+					>
+	<fx:Script>
+		<![CDATA[
+			import com.managers.AudioManager;
+			import com.managers.ConfigurationManager;
+			import com.model.CharacterModel;
+			import com.model.Screens;
+			import com.model.UserCache;
+			import com.views.components.AlertComponent;
+			
+			import flash.display.MovieClip;
+			
+			import mx.events.FlexEvent;
+			
+			import spark.events.ViewNavigatorEvent;
+
+			private var gameTimer:Timer;
+			
+			[Bindable]
+			private var configManager:ConfigurationManager
+			private var userCache:UserCache;
+			private var alertComp:AlertComponent;
+			private var timeUpPopUpMc:TimeUpPopUpMc
+			private var multikillTimer:Timer;
+			private var pauseScreenMc:PauseMenuMc;
+			
+			private var isMultikillStart:Boolean = false;
+			private var numMultiKill:int = 0;
+			private var multikillScore:int = 0;
+			private var gamePaused:Boolean=false;
+			
+			protected function viewscreen1_creationCompleteHandler(event:FlexEvent):void
+			{
+				trace("Creation complete");
+				userCache = UserCache.getInstance();
+				
+				// TODO Auto-generated method stub
+				UserCache.getInstance().wave = 0
+				UserCache.getInstance().timer = 1;
+				UserCache.getInstance().penalty = 0
+
+				addStageHandlers()
+				
+				configManager = ConfigurationManager.getInstance();
+				var gameTime:int =  configManager.gameTimerCount + configManager.delayInGameTimerCount;
+				
+				charElement.addEventListener(CharacterElement.SOLDIER_FIRE_AT_PLAYER, soldierFireHandler);
+				charElement.addEventListener(CharacterElement.BODYGUARD_FIRE_AT_PLAYER, bodyGuardFireHandler);
+				charElement.addEventListener(CharacterElement.ELITEGUARD_FIRE_AT_PLAYER, eliteGuardFireHandler);
+				charElement.addEventListener(CharacterElement.STOP_TIMER, stopTimerHandler);
+				charElement.addEventListener(CharacterElement.RESUME_TIMER, resumeTimerHandler)
+				charElement.init();
+				
+				gameTimer = new Timer(1000);
+				gameTimer.addEventListener(TimerEvent.TIMER, gameTimerHandler)
+				//gameTimer.addEventListener(TimerEvent.TIMER_COMPLETE, gameTimerCompleteHandler)
+				gameTimer.start();
+				
+				multikillTimer = new Timer(1000, configManager.multikillTimer/1000);
+				multikillTimer.addEventListener(TimerEvent.TIMER_COMPLETE, multiKillTimerCompleteHandler)
+				multikillTimer.start();	
+				
+				gameHUD.addEventListener(HUD.GUN_UPDATED, gunChangedHandler)
+				gameHUD.addEventListener(HUD.GAME_PAUSED, gamePausedHandler)
+				gameHUD.addEventListener(HUD.RELOADING_GUN, gunReloadingHandler);
+				
+				pauseScreenMc = new PauseMenuMc();
+				pauseScreenMc.width = stage.stageWidth;
+				pauseScreenMc.scaleY = pauseScreenMc.scaleX;
+				pauseScreenMc.mc_resume_game.addEventListener(MouseEvent.CLICK, resumeGameHandler);
+				pauseScreen.addChild(pauseScreenMc);
+					
+				gun.gun = gameHUD.selectedGun;
+				
+				timeUpPopUpMc = new TimeUpPopUpMc();
+				timeUpPopUpMc.width = stage.stageWidth;
+				timeUpPopUpMc.scaleY = timeUpPopUpMc.scaleX;
+				timeUpPopUpMc.addEventListener(MouseEvent.CLICK, showScoreBoard);
+				gameOverScreen.addChild(timeUpPopUpMc);
+			}
+			
+			private function stopTimerHandler(e:Event):void
+			{
+				gameTimer.stop();
+				//gameHUD.stop();
+			}
+			
+			private function resumeTimerHandler(e:Event):void
+			{
+				gameTimer.start();
+				//gameHUD.resume();
+			}
+			
+			private function resumeGameHandler(e:MouseEvent):void
+			{
+				AudioManager.getInstance().playButtonSound();
+				gamePaused = false;
+				gameTimer.start()
+				if(isMultikillStart){
+					multikillTimer.start();
+				}
+				addStageHandlers()
+				charElement.resumeGame()
+				pauseScreen.visible = false;
+				gameHUD.gamePaused = false
+			}
+			
+			private function gamePausedHandler(e:Event):void{ 
+				if(gameHUD.gamePaused){
+					trace("Game Paused");
+					gamePaused = true;
+					gameTimer.stop();
+					multikillTimer.stop();
+					removeStageHandlers()
+					charElement.pauseGame()
+					pauseScreen.visible = true;
+				}else if(gamePaused) {
+					trace("Game Played");
+					gamePaused = false;
+					gameTimer.start()
+					if(isMultikillStart){
+						multikillTimer.start();
+					}
+					addStageHandlers();
+					charElement.resumeGame()
+					pauseScreen.visible = false;
+				}
+			}
+			
+			public function pauseGameOnExit():void
+			{
+				if(!gamePaused) {
+					gamePaused = true;
+					gameHUD.gamePaused = false;
+					gameTimer.stop();
+					multikillTimer.stop();
+					removeStageHandlers()
+					charElement.pauseGame()
+					pauseScreen.visible = true;
+				}
+			}
+			
+			protected function multiKillTimerCompleteHandler(e:TimerEvent):void
+			{
+				isMultikillStart = false;
+				
+				if(numMultiKill == 3 || numMultiKill == 5){
+					UserCache.getInstance().multikill += multikillScore;
+					UserCache.getInstance().score += multikillScore;
+				}
+				numMultiKill = 0;
+				multikillScore = 0;
+				multikillTimer.reset();
+				multikillTimer.start();
+			}
+			
+			protected function gameTimerHandler(e:TimerEvent):void
+			{
+				debugHUD.timer.text = String(gameTimer.currentCount);
+				var delayToStart:int = configManager.delayInGameTimerCount
+				if(gameTimer.currentCount > (delayToStart/1000)){
+					UserCache.getInstance().timer++;
+				}
+				checkGameTimer();
+			}
+			
+			protected function checkGameTimer():void
+			{
+				if(UserCache.getInstance().timer >= (configManager.gameTimerCount/1000)){
+					gameTimer.stop();
+					gameTimer.reset();
+					processGameOver();
+				}
+			}
+			
+			protected function gameTimerCompleteHandler(e:TimerEvent):void
+			{
+				//trace("Game Time Up");
+				gameTimer.stop();
+				gameTimer.reset();
+				processGameOver();
+			}
+			
+			protected function panGestureHandler(e:TransformGestureEvent):void
+			{
+				//trace("hi");	
+			}
+			protected function tapEventHandler(e:MouseEvent):void
+			{
+				//trace("stage.stageWidth:"+stage.stageWidth +":"+ e.stageX);
+				if(gun.reloading){
+					return;
+				}
+				if(e.target.parent != null){
+					if( e.target.parent == gameHUD.getFreeGun() || e.target.parent == gameHUD.getPremiumGun() || e.target.parent == gameHUD.getPlayPauseMc()){
+						trace("Why Fire");
+						return;
+					}
+				}
+				var pos1:int = 0;
+				var pos2:int = stage.stageWidth/5;
+				var pos3:int = stage.stageWidth/5 * 2;
+				var pos4:int = stage.stageWidth/5 * 3;
+				var pos5:int = stage.stageWidth/5 * 4;
+				var pos6:int = stage.stageWidth;
+				if( e.stageX < pos2 ){
+					//trace("Left most")
+					gun.move = -2;
+				}else if(e.stageX >= pos2 && e.stageX < pos3 ){
+					//trace("left")
+					gun.move = -1
+				}else if(e.stageX >= pos3 && e.stageX < pos4 ){
+					//trace("Normal");
+					gun.move = 0
+				}else if(e.stageX >= pos4 && e.stageX < pos5 ){
+					//trace("right");
+					gun.move = 1
+				}else if( e.stageX >= pos5 && e.stageX < pos6 ){
+					//trace("right most");
+					gun.move = 2
+				}
+				gameHUD.updateFire(gun.gun);
+				AudioManager.getInstance().playGunSound(gun.gun);
+				if(charElement.hitTestPoint(e.stageX, e.stageY, true)){
+					//trace(e.stageX +":"+ e.stageY);
+					var numChld:int = charElement.numChildren
+						
+					//trace("Total child:"+numChld);
+					for(var i:int =0; i<numChld; i++){
+						
+						//trace("child at:"+ i);
+						//trace(MovieClip(charElement.getChildAt(i)).ch.man1.hit_head.hitTestPoint(e.stageX, e.stageY, true));
+						
+						if (charElement.getChildAt(i).hitTestPoint(e.stageX, e.stageY, true)) {
+							var currentChar:MovieClip = MovieClip(charElement.getChildAt(i))
+								
+							if(currentChar["dead"]){
+								return;
+							}
+							var charModel:CharacterModel = currentChar["model"] as CharacterModel;
+							
+							var isHeadShot:Boolean = false;
+							var objects:Array = charElement.getObjectsUnderPoint(new Point(e.stageX, e.stageY));
+							//trace("objects:" + objects.length +":"+ objects);
+							for(var j:int =0; j<objects.length; j++){
+								var eachObject:DisplayObject = objects[j].parent.parent.parent.parent.parent
+								//trace("Name:"+ eachObject.name +":"+ objects[j].parent.name)
+								if(eachObject == currentChar && objects[j].parent.name == "hit_head"){
+									isHeadShot = true;
+									break;
+								}
+							}
+							//trace("IsHeadShot:"+ isHeadShot);
+							var hp:int = charModel.healthPoints;
+							var damageCaused:int = gun.damageCaused();
+							
+							//trace("DamageCaused:"+ damageCaused +">="+ hp +":"+ charModel.type);
+							if((damageCaused >= hp && hp != 0) || isHeadShot){
+								if(isHeadShot){
+									UserCache.getInstance().headShots += (charModel.points/2);
+									UserCache.getInstance().score += (charModel.points/2);
+								}
+								charModel.healthPoints = 0
+								var currentCount:int = UserCache.getInstance().timer; //(gameTimer.repeatCount-gameTimer.currentCount);
+								var timelimit:int = configManager.gameTimerCount/1000;
+								//trace("Time:"+ currentCount +":"+ timelimit);
+								if( currentCount >= timelimit ){
+									UserCache.getInstance().timeMultiplierBonus += charModel.timePointsMultiplier;
+									UserCache.getInstance().score += charModel.timePointsMultiplier;
+									debugHUD.extraPoints += charModel.timePointsMultiplier;
+								}else{
+									UserCache.getInstance().timer -= charModel.timeBonus;
+									//gameTimer.repeatCount += charModel.timeBonus;
+									debugHUD.extraTimer += charModel.timeBonus; 
+								}
+								currentChar.stop();
+								currentChar["dead"] = true;
+								if(charModel.type == 3){
+									currentChar.ch.man1.gotoAndStop(2);
+								}else{
+									currentChar.ch.man1.gotoAndStop(3);
+								}
+								UserCache.getInstance().score += charModel.points;
+								UserCache.getInstance().kills += charModel.points;
+								//charElement.removeChild(charElement.getChildAt(i));
+								charElement.checkConditionToGenerateNewWave()
+								i--;
+								numChld--;
+								
+								if(isMultikillStart){
+									multikillScore += charModel.multiKillBonus
+									numMultiKill ++;
+								}else{
+									isMultikillStart = true;
+									multikillScore = charModel.multiKillBonus;
+									numMultiKill = 1;
+								}
+							}else{
+								charModel.healthPoints -= damageCaused;
+							}
+						}
+					}
+					checkGameTimer();
+					
+				}
+			}
+			
+			private function eliteGuardFireHandler(e:Event):void 
+			{
+				//trace("Elitegaurdfiring");
+				processFireAtPlayer(3)
+			}
+			
+			private function bodyGuardFireHandler(e:Event):void 
+			{
+				processFireAtPlayer(2)
+			}
+			
+			private function soldierFireHandler(e:Event):void 
+			{
+				processFireAtPlayer(1);
+			}
+			
+			private function processFireAtPlayer(charType:int):void
+			{
+				var charModel:CharacterModel = configManager.getCharacter(charType);
+				UserCache.getInstance().penalty += charModel.timePenalty;
+				
+				//to test game play in slow motion - comment the followin line
+				UserCache.getInstance().timer += charModel.timePenalty
+				debugHUD.penalty += charModel.timePenalty;
+				checkGameTimer();
+			}
+			private function processGameOver():void
+			{
+				removeStageHandlers()
+				//UserCache.getInstance().resetCache()
+				
+				gameTimer.stop();
+				gameTimer.reset()
+					
+				charElement.removeEventListener(CharacterElement.SOLDIER_FIRE_AT_PLAYER, soldierFireHandler);
+				charElement.removeEventListener(CharacterElement.BODYGUARD_FIRE_AT_PLAYER, bodyGuardFireHandler);
+				charElement.removeEventListener(CharacterElement.ELITEGUARD_FIRE_AT_PLAYER, eliteGuardFireHandler);
+				charElement.removeEventListener(CharacterElement.STOP_TIMER, stopTimerHandler);
+				charElement.removeEventListener(CharacterElement.RESUME_TIMER, resumeTimerHandler)
+				charElement.reset();	
+				/* if(alertComp == null)
+				{
+					alertComp = new AlertComponent();
+					//alertComp.addEventListener(AlertComponent.OK, changeGameLevel);
+					alertComp.addEventListener(AlertComponent.OK, showScoreBoard);
+					addElement(alertComp);
+					trace("Game Over");
+				} */
+				gameOverScreen.visible = true;
+			}
+			
+			private function showScoreBoard(e:MouseEvent):void
+			{
+				AudioManager.getInstance().playButtonSound();
+				gameTimer.stop();
+				gameTimer.reset()
+				multikillTimer.stop();
+				gamePaused = false
+					
+				/*alertComp.removeEventListener(AlertComponent.OK, showScoreBoard);
+				removeElement(alertComp);
+				alertComp = null;*/
+				gameOverScreen.visible = false;
+				
+				//trace("Challenge:"+ userCache.attemptingNewChallenge +":"+ userCache.attemptingPendingChallenge +":"+userCache.accessToken);
+				if(userCache.attemptingNewChallenge)
+				{
+					parentApplication.changeState(Screens.SCORE_CARD_SCREEN);
+				}
+				else if(userCache.attemptingPendingChallenge)
+				{
+					parentApplication.changeState(Screens.CHALLENGE_RESULT_SCREEN);
+				}
+				else
+				{
+					parentApplication.changeState(Screens.SCORE_CARD_SCREEN);
+				}
+			}
+			
+			private function resetGame():void
+			{
+				
+			}
+			
+			private function changeGameLevel(e:Event):void
+			{
+				if(configManager.currentLevel == 3){
+					configManager.currentLevel = 0;
+				}
+				configManager.currentLevel++;
+				img.source = configManager.getLevelImage();
+				charElement.changeLevel();
+				
+				UserCache.getInstance().wave = 0
+				UserCache.getInstance().timer = 1;
+				UserCache.getInstance().penalty = 0
+				
+				gameTimer.reset();
+				gameTimer.repeatCount = (configManager.gameTimerCount + configManager.delayInGameTimerCount)/1000;
+				gameTimer.start();
+				
+				multikillTimer.stop();
+				multikillTimer.reset();
+				
+				debugHUD.timer.text = "0";
+				debugHUD.extraPoints = 0;
+				debugHUD.extraTimer = 0;
+				debugHUD.penalty = 0;
+				
+				alertComp.removeEventListener(AlertComponent.OK, changeGameLevel);
+				removeElement(alertComp);
+				alertComp = null;
+				
+				gun.visible = false;
+				
+				addStageHandlers()
+				
+				gameHUD.resetHUD();
+				gamePaused = false
+			}
+			
+			protected function img_readyHandler(event:FlexEvent):void
+			{
+				parentApplication.busyInd.visible = false;
+				gun.visible = true;
+			}
+			
+			private function gunChangedHandler(e:Event):void
+			{
+				gun.gun = gameHUD.selectedGun;
+			}
+			
+			private function gunReloadingHandler(e:Event):void
+			{
+				gun.playReloadAnimation();
+			}
+			
+			protected function charElement_addedToStageHandler(event:Event):void
+			{
+				// TODO Auto-generated method stub
+				//trace("game level character added");
+			}
+			
+			private function removeStageHandlers():void
+			{
+				if(this.stage.hasEventListener(MouseEvent.MOUSE_DOWN)){
+					this.stage.removeEventListener(MouseEvent.MOUSE_DOWN, tapEventHandler);
+				}
+				if(this.stage.hasEventListener(TransformGestureEvent.GESTURE_PAN)){
+					this.stage.removeEventListener(TransformGestureEvent.GESTURE_PAN, panGestureHandler);
+				}
+			}
+			
+			private function addStageHandlers():void
+			{
+				//if(!this.stage.hasEventListener(MouseEvent.MOUSE_DOWN)){
+					this.stage.addEventListener(MouseEvent.MOUSE_DOWN, tapEventHandler);
+				//}
+				//if(!this.stage.hasEventListener(TransformGestureEvent.GESTURE_PAN)){
+					this.stage.addEventListener(TransformGestureEvent.GESTURE_PAN, panGestureHandler);
+				//}
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+
+	<s:BitmapImage id="img" source="{configManager.getLevelImage()}" scaleMode="letterbox"
+		ready="img_readyHandler(event)" width="100%"/>
+	
+	<gameLevelScreen:CharacterElement id="charElement" width="100%" height="100%"/>
+	<gameLevelScreen:WeaponElement id="gun" width="100%" height="100%"/>
+	<gameLevelScreen:HUD id="gameHUD" width="100%" height="100%" />
+	<debug:DebugHUD id="debugHUD" width="100%" height="200" visible="false"/>
+	<s:SpriteVisualElement id="pauseScreen" width="100%" height="100%" visible="false" />
+	<s:SpriteVisualElement id="gameOverScreen" width="100%" height="100%" visible="false" />
+</screens:ViewScreen>

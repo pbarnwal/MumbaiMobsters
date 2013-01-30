@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<screens:ViewScreen xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" 
+					xmlns:screens="com.views.screens.*"
+					creationComplete="viewscreen1_creationCompleteHandler(event)">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.managers.AudioManager;
+			import com.managers.ConfigurationManager;
+			import com.model.Screens;
+			import com.model.UserCache;
+			
+			import mx.events.FlexEvent;
+			
+			import spark.managers.PersistenceManager;
+			
+			private var challengeScoreMc:VsMc;
+			private var persistenceManager:PersistenceManager;
+			[Bindable]
+			private var ratio:Number;
+			
+			protected function viewscreen1_creationCompleteHandler(event:FlexEvent):void
+			{
+				// TODO Auto-generated method stub
+				challengeScoreMc = new VsMc();
+				challengeScoreMc.width = stage.stageWidth;
+				ratio = challengeScoreMc.scaleX;
+				challengeScoreMc.scaleY = ratio;
+				mainMov.addChild(challengeScoreMc);
+				
+				var userCache:UserCache = UserCache.getInstance(); 
+				var kills:int = userCache.kills;
+				var headShots:int = userCache.headShots;
+				var multiKill:int = userCache.multikill;
+				var timeMultiplier:int = userCache.timeMultiplierBonus;
+				var totalScore:int = kills + headShots + multiKill + timeMultiplier
+				
+				//scoreCardMc.txtKills.text = String(kills);
+				//scoreCardMc.txtHeadShot.text = String(headShots);
+				//scoreCardMc.txtMultiKill.text = String(multiKill);
+				//scoreCardMc.txtTimeMultiplier.text = String(timeMultiplier);
+				
+				if(userCache.score >= parseInt(userCache.challengerScore)){
+					challengeScoreMc.txt_congratulations.text = "Congratulations! You beat " + userCache.challengerFBName + "\nin a FaceOff challenge.";
+				}else{
+					challengeScoreMc.txt_congratulations.text = "Seek Revenge. " + userCache.challengerFBName + " beat you\nin a FaceOff challenge.";
+				}
+				
+				challengeScoreMc.txt_player_score.text = "Scored " + ConfigurationManager.getInstance().getCurrencyFormat(userCache.score, false);
+				challengeScoreMc.txt_challenge_score.text = "Scored " + ConfigurationManager.getInstance().getCurrencyFormat(parseInt(userCache.challengerScore), false);
+				//populate score  of the challenger	
+					
+				challengeScoreMc.btn_back.visible = false;
+				//challengeScoreMc.btn_back.addEventListener(MouseEvent.CLICK, backButtonHandler);
+				challengeScoreMc.btn_settings.addEventListener(MouseEvent.CLICK, settingsButtonHandler);
+				
+				challengeScoreMc.btn_fbContinue.btn_checkbox.addEventListener(MouseEvent.CLICK, fbSelectionHandler);
+				challengeScoreMc.btn_fbContinue.btn_continue.addEventListener(MouseEvent.CLICK, fbContinueHandler);
+				//challengeScoreMc.btn_challenge.addEventListener(MouseEvent.CLICK, challengeHandler);
+				//challengeScoreMc.btn_leaderboard.addEventListener(MouseEvent.CLICK, leaderBoardHandler);
+				
+				/*userCache.accountBalance += (userCache.score * 1.5);
+				
+				persistenceManager = new PersistenceManager();
+				persistenceManager.setProperty("account_balance", userCache.accountBalance);
+				persistenceManager.setProperty("current_level", ConfigurationManager.getInstance().currentLevel);
+				persistenceManager.setProperty("current_wave", UserCache.getInstance().wave);
+				persistenceManager.save();
+				*/
+				userCache.saveChallengeResult();
+				
+				loadPlayerPhoto();
+				loadChallengerPhoto();
+			}
+			
+			protected function loadPlayerPhoto():void
+			{
+				var playerPhoto:Loader = UserCache.getInstance().playerPhoto;
+				if(playerPhoto){
+					playerPhoto.x = 1;
+					playerPhoto.y = 1;
+					playerPhoto.width = 50;
+					playerPhoto.height = 50;
+					challengeScoreMc.mc_player_photo.addChild(playerPhoto);
+				}
+			}
+			
+			protected function loadChallengerPhoto():void
+			{
+				var challengerPhoto:Loader = UserCache.getInstance().challengerPhoto;
+				if(challengerPhoto){
+					challengerPhoto.x = 1;
+					challengerPhoto.y = 1;
+					challengerPhoto.width = 50;
+					challengerPhoto.height = 50;
+					challengeScoreMc.mc_challenger_photo.addChild(challengerPhoto);
+				}
+			}
+			
+			/* protected function leaderBoardHandler(e:MouseEvent):void
+			{
+				
+			} */
+			
+			protected function fbSelectionHandler(e:MouseEvent):void
+			{
+				AudioManager.getInstance().playButtonSound();
+				var currFrame:int = challengeScoreMc.btn_fbContinue.btn_checkbox.currentFrame;
+				if(currFrame == 1){
+					challengeScoreMc.btn_fbContinue.btn_checkbox.gotoAndStop(2);
+				}else{
+					challengeScoreMc.btn_fbContinue.btn_checkbox.gotoAndStop(1);
+				}
+			}
+			
+			protected function fbContinueHandler(e:MouseEvent):void
+			{
+				AudioManager.getInstance().playButtonSound();
+				var currFrame:int = challengeScoreMc.btn_fbContinue.btn_checkbox.currentFrame;
+				var userCache:UserCache = UserCache.getInstance();
+				if( currFrame== 2){
+					userCache.sendFeedFBUser("I just played Don FaceOff and defeated Vardhan's goons. Try beating my score!");
+				}
+				//userCache.resetChallengeData();
+				parentApplication.changeState(Screens.SCORE_CARD_SCREEN);
+				
+			}
+			
+			/*protected function challengeHandler(e:MouseEvent):void
+			{
+				UserCache.getInstance().challengeAgain();
+				resetUserVariables();
+				parentApplication.changeState(Screens.GUN_STORE_SCREEN);
+			}*/
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:SpriteVisualElement id="mainMov" x="0" y="0" width="100%" height="100%" />
+</screens:ViewScreen>

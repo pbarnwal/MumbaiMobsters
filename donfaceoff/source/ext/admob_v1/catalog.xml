@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding ="utf-8"?>
+<swc xmlns="http://www.adobe.com/flash/swccatalog/9">
+  <versions>
+    <swc version="1.2" />
+    <flex version="4.6.0" build="23201" minimumSupportedVersion="3.0.0" />
+  </versions>
+  <features>
+    <feature-script-deps />
+    <feature-files />
+  </features>
+  <libraries>
+    <library path="library.swf">
+      <script name="com/hdi/nativeExtensions/NativeAdsEvent" mod="1326406641000" signatureChecksum="2993969320" >
+        <def id="com.hdi.nativeExtensions:NativeAdsEvent" /> 
+        <dep id="AS3" type="n" /> 
+        <dep id="flash.events:Event" type="i" /> 
+      </script>
+      <script name="_1f58d1e27ef146dec76ed81e015a2c78daf5d138d98f275e82dc8707c2a436eb_flash_display_Sprite" mod="1326843897097" signatureChecksum="956660601" >
+        <def id="_1f58d1e27ef146dec76ed81e015a2c78daf5d138d98f275e82dc8707c2a436eb_flash_display_Sprite" /> 
+        <dep id="flash.system:Security" type="e" /> 
+        <dep id="AS3" type="n" /> 
+        <dep id="flash.display:Sprite" type="i" /> 
+      </script>
+      <script name="com/hdi/nativeExtensions/NativeAds" mod="1324146468000" signatureChecksum="1445572294" >
+        <def id="com.hdi.nativeExtensions:NativeAds" /> 
+        <dep id="flash.events:EventDispatcher" type="e" /> 
+        <dep id="trace" type="e" /> 
+        <dep id="flash.events:EventDispatcher" type="s" /> 
+        <dep id="AS3" type="n" /> 
+        <dep id="Object" type="i" /> 
+      </script>
+      <digests>
+        <digest type="SHA-256" signed="false" value="e69307b823f993aca2892c51255838932b8723559db21c93dd02fd2e7a4470f0"   />
+      </digests>
+    </library>
+  </libraries>
+  <files>
+  </files>
+</swc>

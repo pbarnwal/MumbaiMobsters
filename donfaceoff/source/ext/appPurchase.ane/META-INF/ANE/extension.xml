@@ -1,0 +1,23 @@
+<extension xmlns="http://ns.adobe.com/air/extension/2.5">
+  <id>com.adobe.appPurchase</id>
+  <versionNumber>1</versionNumber>
+  <platforms>
+    <platform name="iPhone-ARM">
+            <applicationDeployment>
+                <nativeLibrary>libAppPurchase.a</nativeLibrary>
+                <initializer>SBHINAPPExtInitializer</initializer>
+                <finalizer>SBHINAPPExtFinalizer</finalizer>
+            </applicationDeployment>
+    </platform>
+    <platform name="Android-ARM">
+            <applicationDeployment>
+                <nativeLibrary>IAPAndroid.jar</nativeLibrary>
+                <initializer>com.sbhave.appPurchase.glue.AppPurchaseExtension</initializer>
+                <finalizer>com.sbhave.appPurchase.glue.AppPurchaseExtension</finalizer>
+            </applicationDeployment>
+    </platform>
+    <platform name="default"> 
+            <applicationDeployment/> 
+    </platform> 
+  </platforms>
+</extension>

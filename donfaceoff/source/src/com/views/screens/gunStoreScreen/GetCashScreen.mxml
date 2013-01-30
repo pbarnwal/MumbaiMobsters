@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<screens:ViewScreen xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" xmlns:screens="com.views.screens.*"
+					creationComplete="viewscreen1_creationCompleteHandler(event)">
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.nativeExtensions.Product;
+			import com.managers.AudioManager;
+			import com.managers.ConfigurationManager;
+			import com.managers.TransactionManager;
+			import com.model.Screens;
+			import com.model.UserCache;
+			import com.views.components.AlertComponent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
+			
+			import spark.managers.PersistenceManager;
+			
+			private var getCashMc:GetCashMc;
+			private var alertPopUp:AlertComponent;
+			private var optionNum:int;
+			private var transactionManager:TransactionManager;
+			private var selectedProduct:Product 
+			private var selectedPrice:Number;
+			private var numAmount1:Number = 300000;
+			private var disc2:Number = 20;
+			private var disc3:Number = 60;
+			private var disc4:Number = 300;
+			
+			protected function viewscreen1_creationCompleteHandler(event:FlexEvent):void
+			{
+				getCashMc = new GetCashMc()
+				getCashMc.width = stage.stageWidth;
+				getCashMc.scaleY = getCashMc.scaleX;
+				mainMov.addChild(getCashMc);
+				
+				getCashMc.btn_back.addEventListener(MouseEvent.CLICK, backButtonHandler);
+				getCashMc.btn_settings.addEventListener(MouseEvent.CLICK, settingsButtonHandler);
+				//Populate the amount in each option
+				
+				getCashMc.clipSize1.btn_Buy.buttonMode = false
+				getCashMc.clipSize2.btn_Buy.buttonMode = false
+				getCashMc.clipSize3.btn_Buy.buttonMode = false
+				getCashMc.clipSize4.btn_Buy.buttonMode = false
+				getCashMc.clipSize1.btn_Buy.addEventListener(MouseEvent.CLICK, cashOptionSelected);
+				getCashMc.clipSize2.btn_Buy.addEventListener(MouseEvent.CLICK, cashOptionSelected);
+				getCashMc.clipSize3.btn_Buy.addEventListener(MouseEvent.CLICK, cashOptionSelected);
+				getCashMc.clipSize4.btn_Buy.addEventListener(MouseEvent.CLICK, cashOptionSelected);
+				trace("Working fine 4")
+				transactionManager = TransactionManager.getInstance();
+				if(!transactionManager.getMutedStatus()){
+					transactionManager.addEventListener(TransactionManager.RESTORE_FAILED, restoreFailedHandler);
+					transactionManager.addEventListener(TransactionManager.PRODUCTS_RECEIVED, productsReceivedHandler);
+					transactionManager.addEventListener(TransactionManager.PACK_PURCHASED, packPurchasedHandler);
+					transactionManager.addEventListener(TransactionManager.PURCHASE_FAILED, purchaseFailedHandler);
+					transactionManager.init();
+					parentApplication.showBusyIndicator();
+				}else{
+					if(alertPopUp != null){
+						removeElement(alertPopUp);
+					}
+					alertPopUp = new AlertComponent()
+					alertPopUp.message = "In-App Purchase not allowed on this platform";
+					alertPopUp.addEventListener(AlertComponent.OK, purchaseNotAllowedHandler)
+					addElement(alertPopUp);
+				}
+				trace("Working fine 5")
+			}
+			
+			protected function restoreFailedHandler(e:Event):void
+			{
+				parentApplication.hideBusyIndicator();
+				alertPopUp = new AlertComponent()
+				alertPopUp.message = "There is some problem. Please try again.";
+				alertPopUp.addEventListener(AlertComponent.OK, purchaseNotAllowedHandler)
+				addElement(alertPopUp);
+			}
+			
+			protected function purchaseNotAllowedHandler(e:Event):void
+			{
+				if(alertPopUp.hasEventListener(AlertComponent.OK)){
+					alertPopUp.removeEventListener(AlertComponent.OK, purchaseNotAllowedHandler)
+				}
+				removeElement(alertPopUp);
+				backButtonHandler(null)
+			}
+			
+			protected function productsReceivedHandler(e:Event):void
+			{
+				var products:ArrayCollection = transactionManager.arrC; 
+				var totalProducts:int = products.length;
+				var configManager:ConfigurationManager = ConfigurationManager.getInstance();
+				for(var i:int = 0; i<totalProducts; i++)
+				{
+					var product:Product = products.getItemAt(i) as Product;
+					var priceLocale:String = product.priceLocale.split("currency=")[1];
+					getCashMc["clipSize"+(i+1)].payingAmount.text = priceLocale + " " + configManager.getCurrencyFormat(product.price, false);
+					var receivingAmount:Number = numAmount1;
+					if(i == 1)
+					{
+						receivingAmount = (numAmount1 * 2) + (numAmount1 * 2 * disc2/100);
+					}
+					else if(i == 2)
+					{
+						receivingAmount = (numAmount1 * 3) + (numAmount1 * 3 * disc3/100);
+					}
+					else if(i == 3)
+					{
+						receivingAmount = (numAmount1 * 5) + (numAmount1 * 5 * disc4/100);
+					}
+					getCashMc["clipSize"+(i+1)].purchasePrice = receivingAmount;
+					getCashMc["clipSize"+(i+1)].receivingAmount.text = configManager.getCurrencyFormat(receivingAmount);
+					getCashMc["clipSize"+(i+1)].btn_Buy.mouseEnabled = true;
+				}
+				parentApplication.hideBusyIndicator();
+			}
+			
+			protected function cashOptionSelected(event:MouseEvent):void
+			{
+				parentApplication.showBusyIndicator();
+				AudioManager.getInstance().playButtonSound();
+				enableAllBuyButtons(false);	
+				var selectedOption:DisplayObject = event.currentTarget as DisplayObject;
+				optionNum = parseInt(selectedOption.parent.name.split("Size")[1]);
+				selectedProduct = transactionManager.arrC.getItemAt(optionNum-1) as Product;
+				selectedPrice = selectedOption.parent["purchasePrice"]
+				transactionManager.startPayment(selectedProduct.identifier);
+			}
+			
+			private function packPurchasedHandler(e:Event):void
+			{
+				enableAllBuyButtons(false)
+				if(selectedPrice > 0){
+					UserCache.getInstance().accountBalance += selectedPrice
+					var persistenceManager:PersistenceManager = new PersistenceManager();
+					persistenceManager.setProperty("account_balance", UserCache.getInstance().accountBalance);
+					persistenceManager.save();
+				}
+				Screens.CURRENT_SCREEN = Screens.GUN_STORE_SCREEN;
+				alertPopUp = new AlertComponent();
+				alertPopUp.setSize(500, 300);
+				alertPopUp.message = "Congratulations! You have successfully purchased Don Cash "+ ConfigurationManager.getInstance().getCurrencyFormat(selectedPrice) +"."
+				alertPopUp.addEventListener(AlertComponent.OK, purchaseSuccessPopupHandler)
+				addElement(alertPopUp);
+				parentApplication.hideBusyIndicator();
+			}
+			private function purchaseSuccessPopupHandler(e:Event):void
+			{
+				alertPopUp.removeEventListener(AlertComponent.OK, purchaseSuccessPopupHandler)
+				removeElement(alertPopUp);
+				backButtonHandler(null)
+			}
+			private function purchaseFailedHandler(e:Event):void
+			{
+				alertPopUp = new AlertComponent();
+				alertPopUp.message = "Transaction failed. Please try again."
+				alertPopUp.addEventListener(AlertComponent.OK, purchaseFailedPopupHandler)
+				addElement(alertPopUp);
+				parentApplication.hideBusyIndicator();
+			}
+			
+			private function purchaseFailedPopupHandler(e:Event):void
+			{
+				alertPopUp.removeEventListener(AlertComponent.OK, purchaseFailedPopupHandler)
+				enableAllBuyButtons(true)
+				removeElement(alertPopUp);
+			}
+			
+			private function enableAllBuyButtons(bln:Boolean):void
+			{
+				getCashMc.clipSize1.btn_Buy.mouseEnabled = bln
+				getCashMc.clipSize2.btn_Buy.mouseEnabled = bln
+				getCashMc.clipSize3.btn_Buy.mouseEnabled = bln
+				getCashMc.clipSize4.btn_Buy.mouseEnabled = bln
+			}
+			
+			override protected function backButtonHandler(e:MouseEvent):void
+			{
+				AudioManager.getInstance().playButtonSound();
+				Screens.CURRENT_SCREEN = Screens.GUN_STORE_SCREEN;
+				parentApplication.removeLastView();
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:SpriteVisualElement id="mainMov" x="0" y="0" width="100%" height="100%" />
+</screens:ViewScreen>

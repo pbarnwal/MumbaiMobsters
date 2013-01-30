@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		xmlns:s="library://ns.adobe.com/flex/spark" title="ViewScreen"
+		overlayControls="true" actionBarVisible="false" top="0"
+		creationComplete="view1_creationCompleteHandler(event)" destructionPolicy="auto">
+	<fx:Script>
+		<![CDATA[
+			import com.managers.AudioManager;
+			import com.model.Screens;
+			
+			import mx.events.FlexEvent;
+			
+			import spark.events.ViewNavigatorEvent;
+			
+			protected function backButtonHandler(event:MouseEvent):void
+			{
+				trace("Current Screen:"+ Screens.CURRENT_SCREEN);
+				trace("parentApp:"+ parentApplication);
+				AudioManager.getInstance().playButtonSound();
+				parentApplication.changeState(Screens.CURRENT_SCREEN-1);
+			}
+			
+			protected function settingsButtonHandler(event:MouseEvent):void
+			{
+				AudioManager.getInstance().playButtonSound();
+				parentApplication.changeState(Screens.SETTINGS_SCREEN);
+			}
+			
+			protected function view1_creationCompleteHandler(event:FlexEvent):void
+			{
+				// TODO Auto-generated method stub
+				
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+</s:View>

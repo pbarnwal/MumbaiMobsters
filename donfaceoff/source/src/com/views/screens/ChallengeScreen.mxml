@@ -1,0 +1,445 @@
+<?xml version="1.0" encoding="utf-8"?>
+<screens:ViewScreen xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" xmlns:screens="com.views.screens.*"
+					creationComplete="viewscreen1_creationCompleteHandler(event)">
+	<fx:Script>
+		<![CDATA[
+			import com.events.ChallengeEvent;
+			import com.managers.AudioManager;
+			import com.managers.ConfigurationManager;
+			import com.model.Screens;
+			import com.model.UserCache;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
+			
+			import spark.components.List;
+			
+			private var challengeMc:ChallengeMc; 
+			
+			[Bindable]
+			private var ratio:Number;
+			
+			private var currentTab:int = -1;
+			private var currentTabMc:MovieClip;
+			private var tabs:Array = ["pending_challenges_mc", "start_new_challenges_mc","view_result_mc"];
+			private var buttons:Array = ["btn_pending_challenges", "btn_start_new_challenges","btn_view_result"];
+			
+			[Bindable]
+			private var pendingDp:ArrayCollection;
+
+			[Bindable]
+			private var newChallengesDp:ArrayCollection;
+			
+			[Bindable]
+			private var resultsDp:ArrayCollection;
+			
+			[Bindable]
+			private var allFriendsDp:ArrayCollection
+			
+			private var userCache:UserCache;
+			
+			private var searchKeyWord:String;
+			
+			private var loadComplete:int = 0
+			
+			protected function viewscreen1_creationCompleteHandler(event:FlexEvent):void
+			{
+				// TODO Auto-generated method stub
+				challengeMc = new ChallengeMc();
+				challengeMc.width = stage.stageWidth;
+				ratio = challengeMc.scaleX;
+				challengeMc.scaleY = ratio;
+				mainMov.addChild(challengeMc);
+					
+				userCache = UserCache.getInstance();
+				
+				challengeMc.btn_pending_challenges.addEventListener(MouseEvent.CLICK, pendingChallengesHandler);
+				challengeMc.btn_start_new_challenges.addEventListener(MouseEvent.CLICK, newChallengeHandler);
+				challengeMc.btn_view_result.addEventListener(MouseEvent.CLICK, viewResultHandler);
+				
+				challengeMc.btn_back.addEventListener(MouseEvent.CLICK, backButtonHandler);
+				challengeMc.btn_settings.addEventListener(MouseEvent.CLICK, settingsButtonHandler);
+				challengeMc.btn_skip.addEventListener(MouseEvent.CLICK, skipButtonHandler)
+					
+				challengeMc.pending_challenges_mc.addChild(pendingChallengesLst);
+				challengeMc.pending_challenges_mc.addChild(challengeMc.pending_challenges_mc.outer_frame_mc);
+				challengeMc.pending_challenges_mc.outer_frame_mc.mouseEnabled = false;
+				
+				challengeMc.start_new_challenges_mc.addChildAt(newChallengesLst,0);
+				challengeMc.start_new_challenges_mc.outer_frame_mc.mouseEnabled = false;
+				challengeMc.view_result_mc.addChildAt(resultsLst,0);
+				
+				challengeMc.view_result_mc.outer_frame_mc.mouseEnabled = false;
+				
+				challengeMc.txt_result.text = "0";
+				loadComplete = 0;
+				parentApplication.showBusyIndicator();
+				userCache.loadPendingChallenges(challengesLoaded);
+				loadFBFriends();
+				userCache.loadPreviousResults(resultsLoaded);
+
+				pendingDp = new ArrayCollection();
+				/* for(var i:int=0;i<13;i++){
+					pendingDp.addItem({id:i, name:"item:"+i, score:(i+1)*1000, photo:"http://graph.facebook.com/devender.gupta.96/picture"});
+				} */
+				
+				newChallengesDp =new ArrayCollection();
+				/*for(var i:int=0;i<1;i++){
+					newChallengesDp.addItem({id:i, name:"item:"+i, photo:"http://graph.facebook.com/devender.gupta.96/picture"});
+				}*/
+				
+				resultsDp = new ArrayCollection();
+				/* for(var i:int=0;i<13;i++){
+					resultsDp.addItem({id:i, name:"item "+i, time:"5 min", last_score:"50,000", prize:"5,000", photo:"http://graph.facebook.com/devender.gupta.96/picture"});
+				} */
+				
+				selectCurrentTab(0);
+				
+				pendingChallengesLst.addEventListener(ChallengeEvent.ACCEPT_CHALLENGE, acceptChallengeHandler);
+				pendingChallengesLst.addEventListener(ChallengeEvent.DECLINE_CHALLENGE, declineChallengeHandler);
+				newChallengesLst.addEventListener(ChallengeEvent.ADD_FRIENDS_TO_CHALLENGE, addFriendsToChallengeHandler);
+				newChallengesLst.addEventListener(ChallengeEvent.REMOVE_FRIENDS_FROM_CHALLENGE, removeFriendsFromChallengeHandler);
+				
+				challengeMc.start_new_challenges_mc.txt_search.addEventListener(Event.CHANGE, filterChangeHandler)
+				challengeMc.start_new_challenges_mc.btn_challenge.addEventListener(MouseEvent.CLICK, challengeSelectedFriendsHandler)
+				challengeMc.start_new_challenges_mc.btn_challenge_all.addEventListener(MouseEvent.CLICK, challengeAllFriendsHandler)
+					
+				resultsLst.addEventListener(ChallengeEvent.FB_SHARE, fbShareHandler);
+				resultsLst.addEventListener(ChallengeEvent.PLAY_AGAIN, playAgainHandler);
+			}
+			/***************************************************************/
+			/**********************Pending Challenges tab*******************/
+			/***************************************************************/
+			private function challengesLoaded(e:Event):void
+			{
+				var json:Array = JSON.parse(e.target.data.toString()) as Array;
+				var totalPendingChallenges:int = json.length;
+				for(var i:int = 0; i<totalPendingChallenges; i++){
+					var challenge:Object = json[i];
+					pendingDp.addItem({fbid:challenge["fbid"], name:challenge["name"], score:challenge["score"], uuid:challenge["uuid"], photo:"http://graph.facebook.com/"+challenge["fbid"]+"/picture"});
+				}
+				updateLoadComplete()
+			}
+			
+			private function acceptChallengeHandler(e:ChallengeEvent):void
+			{
+				var item:Object = pendingDp.getItemAt(e.selectedIndex);
+				userCache.challengerFBId = item.fbid;
+				userCache.challengerFBName = item.name;
+				userCache.challengerFBPicture = item.photo;
+				userCache.challengerScore = item.score;
+				userCache.challengeUUID = item.uuid;
+				
+				userCache.attemptingPendingChallenge = true;
+				userCache.attemptingNewChallenge = false;
+				userCache.loadChallengerPhoto();
+				AudioManager.getInstance().playButtonSound();
+				parentApplication.changeState(Screens.MISSION_SELECTION_SCREEN);
+			}
+			
+			private function declineChallengeHandler(e:ChallengeEvent):void
+			{
+				var item:Object = pendingDp.getItemAt(e.selectedIndex);
+				pendingDp.removeItemAt(e.selectedIndex);
+				pendingDp.refresh();
+				AudioManager.getInstance().playButtonSound();
+				userCache.declineChallenge(item, resultsLoaded);	
+			}
+			
+			
+			/***************************************************************/
+			/**********************Start New Challenge**********************/
+			/***************************************************************/
+			
+			protected function loadFBFriends():void
+			{
+				if(userCache.accessToken != ""){
+					var urlVariables:URLVariables = new URLVariables();
+					urlVariables.fields = "id,name,picture";
+					urlVariables.access_token = userCache.accessToken;
+					
+					var urlLoader:URLLoader = new URLLoader();
+					urlLoader.data = urlVariables
+					urlLoader.dataFormat = URLLoaderDataFormat.TEXT;
+					urlLoader.addEventListener(Event.COMPLETE, friendListLoaded)
+					
+					var urlRequest:URLRequest = new URLRequest("https://graph.facebook.com/me/friends")
+					urlRequest.data = urlVariables
+					urlRequest.method = URLRequestMethod.GET;
+					urlLoader.load(urlRequest);
+				}
+			}
+			
+			private function friendListLoaded(e:Event):void
+			{
+				var json:Object = JSON.parse(e.target.data.toString());
+				var friendsArr:Array = json.data;
+				var totalFriends:int = friendsArr.length;
+
+				for(var i:int =0; i<totalFriends; i++){
+					var friendObj:Object = friendsArr[i];
+					newChallengesDp.addItem({id:friendObj["id"], name:friendObj["name"], score:1000, photo:friendObj["picture"]["data"]["url"]});
+				}
+				setSelectedOpponents();
+				updateLoadComplete();
+			}
+			
+			protected function addFriendsToChallengeHandler(e:ChallengeEvent):void
+			{
+				var lst:List = e.currentTarget as List;
+				var item:Object = lst.dataProvider.getItemAt(e.selectedIndex);
+				trace("Friend added :"+ item.id +":"+ item.name)
+				userCache.addFriendsToChallenge(item.id, item.name);
+				AudioManager.getInstance().playButtonSound();
+				setSelectedOpponents();
+			}
+			
+			protected function removeFriendsFromChallengeHandler(e:ChallengeEvent):void
+			{
+				var lst:List = e.currentTarget as List;
+				var item:Object = lst.dataProvider.getItemAt(e.selectedIndex);
+				userCache.removeFriendsToChallenge(item.id);
+				AudioManager.getInstance().playButtonSound();
+				setSelectedOpponents();
+			}
+			
+			protected function setSelectedOpponents():void
+			{
+				var selectedFriends:int = userCache.newChallengeFBIds.length;
+				challengeMc.start_new_challenges_mc.txt_friends_selected.text = "Friends selected " + selectedFriends +"/" + (newChallengesDp.length)
+			}
+			
+			protected function filterChangeHandler(e:Event):void
+			{
+				var txt:TextField = challengeMc.start_new_challenges_mc.txt_search;
+				if(txt.text.length == 0)
+				{
+					txt.text = "Search friends here";
+					searchKeyWord == "";
+					newChallengesDp.filterFunction = null;
+					newChallengesDp.refresh();
+				}
+				else
+				{
+					searchKeyWord = txt.text;
+					newChallengesDp.filterFunction = filterFunction;
+					newChallengesDp.refresh();
+				}
+			}
+			
+			protected function filterFunction(item:Object):Boolean
+			{
+				if(item == null || item.name == undefined){
+					return false;
+				}
+				/*if(item.name.toLowerCase()== searchKeyWord.toLowerCase()){
+					trace(item.name +":"+ item.name.toLowerCase()+":"+ searchKeyWord.toLowerCase());
+				}*/
+				return (item.name.toLowerCase().indexOf(searchKeyWord.toLowerCase()) > -1);
+			}
+			
+			protected function challengeAllFriendsHandler(e:MouseEvent):void
+			{
+				var tempArr:Array = new Array();
+				var totalItems:int = newChallengesDp.length;
+				totalItems = (totalItems > 50)? 50: totalItems;
+				for(var i:int = 0; i<totalItems; i++){
+					var item:Object = newChallengesDp.getItemAt(i);
+					tempArr.push({fbid:parseInt(item.id), name:item.name});
+				}
+				userCache.newChallengeFBIds = tempArr;
+				
+				userCache.attemptingNewChallenge = true;
+				userCache.attemptingPendingChallenge = false;
+				userCache.challengerPhoto = null;
+				AudioManager.getInstance().playButtonSound();
+				parentApplication.changeState(Screens.MISSION_SELECTION_SCREEN);
+			}
+			
+			protected function challengeSelectedFriendsHandler(e:MouseEvent):void
+			{
+				if(userCache.newChallengeFBIds.length > 0){
+					userCache.attemptingNewChallenge = true;
+					userCache.attemptingPendingChallenge = false;
+					if(userCache.newChallengeFBIds.length == 1){
+						userCache.challengerFBPicture = "https://graph.facebook.com/" + userCache.newChallengeFBIds[0].fbid + "/picture";
+						userCache.loadChallengerPhoto();
+					}else{
+						userCache.challengerPhoto = null;
+					}
+					AudioManager.getInstance().playButtonSound();
+					parentApplication.changeState(Screens.MISSION_SELECTION_SCREEN);
+				}				
+			}
+			
+			/***************************************************************/
+			/**********************View Results tab*************************/
+			/***************************************************************/
+			
+			private function resultsLoaded(e:Event):void
+			{
+				var json:Object = JSON.parse(e.target.data.toString());
+				var dataArr:Array = json as Array;
+				var totalResults:int = dataArr.length;
+				var configManager:ConfigurationManager = ConfigurationManager.getInstance();
+				for(var i:int =0; i<totalResults; i++)
+				{
+					var resultRow:Object = dataArr[i];
+					var cashPrize:String = configManager.getCurrencyFormat(resultRow.opponentscore * 1.5);
+					resultsDp.addItem({opponentfbid:resultRow.opponentfbid, opponentname:resultRow.opponentname, opponentscore:resultRow.opponentscore, time:getTimeString(resultRow.time), initiatorscore:resultRow.initiatorscore, prize:cashPrize, photo:"http://graph.facebook.com/"+resultRow.opponentfbid+"/picture"});
+				}
+				challengeMc.txt_result.text = String(totalResults);
+				updateLoadComplete();
+			}
+			protected function fbShareHandler(e:ChallengeEvent):void
+			{
+				if(e.selectedIndex > -1){
+					var item:Object = resultsDp.getItemAt(e.selectedIndex);
+					var score:String = ConfigurationManager.getInstance().getCurrencyFormat(item.initiatorscore, false);
+					userCache.sendFeedFBUser("I just played Don FaceOff and defeated Vardhan's goons. Try beating my score!");
+					AudioManager.getInstance().playButtonSound();
+				}
+			}
+			protected function playAgainHandler(e:ChallengeEvent):void
+			{
+				var item:Object = resultsDp.getItemAt(e.selectedIndex);
+				
+				var tempArr:Array = new Array();
+				tempArr.push({fbid:parseInt(item.opponentfbid), name:item.opponentname});
+				userCache.newChallengeFBIds = tempArr;
+				
+				userCache.attemptingNewChallenge = true;
+				userCache.attemptingPendingChallenge = false;
+				userCache.challengerPhoto = null;
+				
+				AudioManager.getInstance().playButtonSound();
+				parentApplication.changeState(Screens.MISSION_SELECTION_SCREEN);
+			}
+			
+			/***************************************************************/
+			/***************************************************************/
+			
+			private function pendingChallengesHandler(e:MouseEvent):void
+			{
+				selectCurrentTab(0);
+			}
+			
+			private function newChallengeHandler(e:MouseEvent):void
+			{
+				selectCurrentTab(1);
+			}
+			
+			private function viewResultHandler(e:MouseEvent):void
+			{
+				selectCurrentTab(2);
+			}
+			
+			private function skipButtonHandler(e:MouseEvent):void
+			{
+				parentApplication.changeState(Screens.CURRENT_SCREEN+1);
+			}
+			
+			private function selectCurrentTab(newTab:int):void
+			{
+				if(currentTab == newTab){
+					return;
+				}
+				AudioManager.getInstance().playButtonSound();
+				for(var i:int = 0; i<tabs.length; i++){
+					challengeMc[tabs[i]].visible = false;
+					challengeMc[buttons[i]].gotoAndStop(1);
+				}
+				challengeMc[tabs[newTab]].visible = true;
+				challengeMc[buttons[newTab]].gotoAndStop(2);
+				newTab = currentTab;
+			}
+			
+			private function updateLoadComplete():void
+			{
+				loadComplete += 1;
+				if(loadComplete == 3)
+				{
+					loadComplete = 0;
+					parentApplication.hideBusyIndicator()
+				}
+			}
+			
+			private function getTimeString(diff:int):String
+			{
+				/*var arr:Array = timeString.split("T");
+				
+				var dateArray:Array = arr[0].split("-");
+				var year:int = parseInt(dateArray[0])
+				var month:int = parseInt(dateArray[1])
+				var day:int = parseInt(dateArray[2])
+				
+				var timeArray:Array = arr[1].split("Z")[0].split(":");
+				var hrs:int = parseInt(timeArray[0]);
+				var min:int = parseInt(timeArray[1]);
+				var sec:int = parseInt(timeArray[2]);
+				
+				var date:Date = new Date(year,month-1, day, hrs, min, sec);
+				var date1:Date = new Date();
+				var diff:int = Math.abs(date1.valueOf() - date.valueOf())/1000;
+				*/
+				
+				var dd:int = Math.floor(diff / (24 * 60 * 60));
+				diff = diff - (dd * 24 * 60 * 60)
+				var hh:int = Math.floor(diff / (60 * 60));
+				diff = diff - (hh * 60 * 60);
+				var mm:int = Math.floor(diff / 60);
+				diff = diff - (mm * 60);
+				var ss:int = diff;
+				
+				if(dd > 1){
+					return dd + " days ago"
+				}else if(dd == 1){
+					return "1 day ago"
+				}else if(hh > 1){
+					return hh + " hours ago"
+				}else if(hh == 1){
+					return "1 hour ago"
+				}else if(mm > 1){
+					return mm + " mins ago"
+				}else if(mm == 1){
+					return "1 min ago"
+				}else if(ss > 1){
+					return ss + " secs ago"
+				}else if(ss == 1){
+					return "1 sec ago"
+				}
+				return "5 min ago";
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:SpriteVisualElement id="mainMov" x="0" y="0" width="100%" height="100%" />
+	<s:List id="pendingChallengesLst" x="715" y="93" width="1241" height="674" dataProvider="{pendingDp}" 
+			contentBackgroundAlpha="0" itemRenderer="com.views.components.renderers.PendingChallengesItemRenderer">
+		<s:layout>
+			<s:VerticalLayout rowHeight="211" variableRowHeight="false" />
+		</s:layout>
+	</s:List>
+	
+	<s:List id="newChallengesLst" x="29" y="236" width="1946" height="338" dataProvider="{newChallengesDp}" 
+		 	contentBackgroundAlpha="0" itemRenderer="com.views.components.renderers.StartChallengesItemRenderer"
+			allowMultipleSelection="true" useVirtualLayout="false">
+		<s:layout>
+			<s:TileLayout id="newChallengeLayout" rowHeight="170" columnWidth="970" />
+		</s:layout>
+	</s:List>
+	
+	<s:List id="resultsLst" x="31" y="84" width="1947" height="494" dataProvider="{resultsDp}" 
+			contentBackgroundAlpha="0" itemRenderer="com.views.components.renderers.ResultsItemRenderer"
+			allowMultipleSelection="true">
+		<s:layout>
+			<s:VerticalLayout rowHeight="213" variableRowHeight="false"/>
+		</s:layout>
+	</s:List>
+	
+	
+</screens:ViewScreen>

@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   runtimeDPIProvider="com.views.iPad3RuntimeDPI" applicationDPI="320" 
+			   creationComplete="application_creationCompleteHandler(event)"
+			   xmlns:screens="com.views.screens.*" xmlns:components="com.views.components.*"
+			   splashScreenImage="@Embed('assets/images/DonLoadingScreen.png')" splashScreenMinimumDisplayTime="2000">
+	<fx:Script>
+		<![CDATA[
+			import com.managers.AudioManager;
+			import com.managers.ConfigurationManager;
+			import com.model.PathAnimations;
+			import com.model.Screens;
+			import com.model.UserCache;
+			import com.model.Weapons;
+			import com.views.components.AlertComponent;
+			import com.views.screens.ChallengeResultScreen;
+			import com.views.screens.ChallengeScreen;
+			import com.views.screens.HelpScreen;
+			import com.views.screens.IntroScreen;
+			import com.views.screens.LoginScreen;
+			import com.views.screens.MissionSelectionScreen;
+			import com.views.screens.ScoreCardScreen;
+			import com.views.screens.SettingsScreen;
+			import com.views.screens.SplashScreen;
+			import com.views.screens.gameLevelScreen.GameLevelScreen;
+			import com.views.screens.gunStoreScreen.GetCashScreen;
+			import com.views.screens.gunStoreScreen.GunStoreScreen;
+			
+			import flash.utils.setTimeout;
+			
+			import mx.events.FlexEvent;
+			import mx.events.ResizeEvent;
+			
+			import spark.managers.PersistenceManager;
+			import spark.transitions.CrossFadeViewTransition;
+			import spark.transitions.SlideViewTransition;
+			import spark.transitions.ViewTransitionBase;
+			import spark.transitions.ViewTransitionDirection;
+			
+			private var persistenceManager:PersistenceManager;
+			
+			protected function application_creationCompleteHandler(event:FlexEvent):void
+			{
+				// TODO Auto-generated method stub
+				
+				NativeApplication.nativeApplication.addEventListener(Event.EXITING,appExitEvent,false,0,true);
+				NativeApplication.nativeApplication.addEventListener(Event.DEACTIVATE,appExitEvent,false,0,true);
+				
+				trace(Multitouch.supportsTouchEvents)
+				//busyInd.x = (navContainer.width - busyInd.width)/2;
+				//busyInd.y = (navContainer.height - busyInd.height)/2;
+				navContainer.actionBar.visible = false;
+				initModel()
+				loadXML()
+				initPersistence();
+				//initAds();
+				//initNativeAds();
+				initSound();
+			}
+			
+			
+			protected function initModel():void
+			{
+				Weapons.getInstance().init();
+				PathAnimations.getInstance().init();
+			}
+			
+			protected function loadXML():void
+			{
+				var config:URLLoader = new URLLoader();
+				config.addEventListener(Event.COMPLETE, configLoaded)
+				config.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+				config.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityErrorHandler);
+				config.load(new URLRequest("app:/assets/xml/config.xml"));
+			}
+			
+			protected function initPersistence():void
+			{
+				persistenceManager = new PersistenceManager();
+				if(persistenceManager.load()){
+					var savedData:Object = persistenceManager.getProperty("account_balance");
+					trace("savedData:"+savedData);
+					if(savedData != null){
+						UserCache.getInstance().accountBalance = parseInt(savedData.toString());
+					}
+					else
+					{
+						UserCache.getInstance().accountBalance = 0;
+					}
+				}
+			}
+			
+			protected function appExitEvent(e:Event):void
+			{
+				if(Screens.CURRENT_SCREEN == Screens.GAME_LEVEL_SCREEN){
+					var gameLevelScreen:GameLevelScreen = navContainer.activeView as GameLevelScreen;
+					if(gameLevelScreen){
+						gameLevelScreen.pauseGameOnExit();
+					}
+				}
+			}
+			
+			/*
+			protected function initNativeAds():void
+			{
+				if(!NativeAds.isSupported){
+					trace("native ad not supported");
+				}else{
+					trace("Working Native ads");
+					NativeAds.setUnitId("a15076cc9b6a67a");
+					NativeAds.setAdMode(false);//put the ads in real mode
+				}
+				
+				//initialize the ad banner with size compatible for phones, it's applicable to iOS only
+				NativeAds.initAd(0, 0, 320, 50);
+				//NativeAds.dispatcher.addEventListener(NativeAdsEvent.AD_RECEIVED,onAdReceived);
+				NativeAds.showAd(0,300,480,110);
+			}
+			
+			public function onAdReceived(e:* = null):void
+			{
+				//Anything behind the ad will be hidden, update your layout to handle this edge case.
+				trace("update ui's size and position");
+			}
+			*/
+			
+			/*
+			protected function initAds():void
+			{
+				if (!AdMob.isSupported)
+				{
+					trace("AdMob is not supported on this platform.")
+					log("AdMob is not supported on this platform.");
+					return;
+				}
+				trace("initializing AdMob...");		
+				log("initializing AdmoB")
+				try{
+					AdMob.init("a150770b63261e3", "a15076cc9b6a67a");
+				}catch(e:Error){
+					log("\nError in init:"+ e.message);
+				}
+				//var testDevices:Vector.<String>=null;
+				//testDevices=AdMob.getTestDeviceIDs();
+				AdMob.addEventListener(AdMobErrorEvent.FAILED_TO_RECEIVE_AD,onFailedReceiveAd);
+				AdMob.addEventListener(AdMobEvent.RECEIVED_AD,onReceiveAd);
+				AdMob.addEventListener(AdMobEvent.SCREEN_PRESENTED,onScreenPresented);
+				AdMob.addEventListener(AdMobEvent.SCREEN_DISMISSED,onScreenDismissed);
+				AdMob.addEventListener(AdMobEvent.LEAVE_APPLICATION,onLeaveApplication);
+				try{
+					AdMob.showAd(AdMobAdType.BANNER,AdMobAlignment.CENTER,AdMobAlignment.BOTTOM,null);
+				}catch(e:Error){
+					log("Error Occured in showing ad"+e.message);
+				}
+			}
+			*/
+			
+			/** On Failed Receive Ad */
+			/*private function onFailedReceiveAd(e:AdMobErrorEvent):void
+			{
+				log("ERROR receiving ad, reason: '"+e.text+"'");
+			}*/
+			
+			/** On Receive Ad */
+			/*private function onReceiveAd(e:AdMobEvent):void
+			{
+				log("Received ad.  Dimensions:"+e.dimensions);
+			}
+			*/
+			
+			/** On Screen Presented */
+			/*private function onScreenPresented(e:AdMobEvent):void
+			{
+				log("Screen Presented.");
+			}*/
+			
+			/** On Screen Dismissed */
+			/*private function onScreenDismissed(e:AdMobEvent):void
+			{
+				log("Screen Dismissed.");
+			}*/
+			
+			/** On Leave Application */
+			/*private function onLeaveApplication(e:AdMobEvent):void
+			{
+				log("Leave Application.");
+			}*/
+			
+			private function log(msg:String):void
+			{
+				debug.text += msg;
+			}
+
+			private function ioErrorHandler(event:IOErrorEvent):void
+			{
+				//debug.text += ("IOError:"+ event.errorID);
+			}
+			
+			private function securityErrorHandler(event:SecurityErrorEvent):void
+			{
+				//debug.text += ("Error:"+ event.errorID);
+			}
+			
+			private function initSound():void
+			{
+				AudioManager.getInstance().init();
+			}
+			
+			protected function configLoaded(e:Event):void
+			{
+				ConfigurationManager.getInstance().config = new XML(e.target.data);
+			}
+			
+			protected function showFirstView():void
+			{
+				navContainer.pushView(com.views.screens.gameLevelScreen.GameLevelScreen);
+				//Screens.CURRENT_SCREEN = Screens.MISSION_SELECTION_SCREEN;
+				//navContainer.pushView(com.views.screens.MissionSelectionScreen);
+				
+			}
+			
+			public function changeState(screenNumber:int, viewTran:SlideViewTransition=null):void
+			{
+				trace("FaceOff.xml: screenNumber", screenNumber);
+				var currentScreen:int = Screens.CURRENT_SCREEN;
+				Screens.PREVIOUS_SCREEN = Screens.CURRENT_SCREEN;
+				Screens.CURRENT_SCREEN = screenNumber;
+				
+				if(screenNumber==Screens.SPLASH_SCREEN){
+					navContainer.replaceView(com.views.screens.SplashScreen, null, null, viewTran);
+				}
+				else if(screenNumber==Screens.LOGIN_SCREEN){
+					navContainer.replaceView(com.views.screens.LoginScreen, null, null, viewTran);
+				}
+				else if(screenNumber==Screens.INTRO_SCREEN){
+					navContainer.replaceView(com.views.screens.IntroScreen, null, null, viewTran);
+				}
+				else if(screenNumber==Screens.HELP_SCREEN){
+					navContainer.replaceView(com.views.screens.HelpScreen, null, null, viewTran);
+				}
+				else if(screenNumber==Screens.CHALLENGE_SCREEN){
+					navContainer.replaceView(com.views.screens.ChallengeScreen, null, null, viewTran);
+				}
+				else if(screenNumber==Screens.MISSION_SELECTION_SCREEN){
+					navContainer.replaceView(com.views.screens.MissionSelectionScreen, null, null, viewTran);
+				}
+				else if(screenNumber==Screens.GUN_STORE_SCREEN){
+					navContainer.replaceView(com.views.screens.gunStoreScreen.GunStoreScreen, null, null, viewTran);
+				}
+				else if(screenNumber==Screens.GAME_LEVEL_SCREEN){
+					navContainer.replaceView(com.views.screens.gameLevelScreen.GameLevelScreen, null, null, viewTran);
+				}
+				else if(screenNumber==Screens.GET_CASH_SCREEN){
+					navContainer.replaceView(com.views.screens.gunStoreScreen.GetCashScreen, null, null, viewTran);
+				}
+				else if(screenNumber==Screens.SCORE_CARD_SCREEN){
+					navContainer.replaceView(com.views.screens.ScoreCardScreen, null, null, viewTran);
+				}
+				else if(screenNumber == Screens.CHALLENGE_RESULT_SCREEN){
+					navContainer.replaceView(com.views.screens.ChallengeResultScreen, null, null, viewTran);
+				}
+				else if(screenNumber == Screens.SETTINGS_SCREEN)
+				{
+					navContainer.replaceView(com.views.screens.SettingsScreen, currentScreen, null, viewTran);
+				}
+			}
+		
+			public function removeLastView():void
+			{
+				var viewTran:SlideViewTransition = new SlideViewTransition();
+				viewTran.direction = ViewTransitionDirection.RIGHT;
+				changeState(Screens.PREVIOUS_SCREEN, viewTran);
+			}
+			
+			public function showBusyIndicator():void
+			{
+				busyInd.visible = true;
+			}
+			public function hideBusyIndicator():void
+			{
+				busyInd.visible = false;
+			}
+			
+			protected function navContainer_addedToStageHandler(event:Event):void
+			{
+				// TODO Auto-generated method stub
+				//var w:int = stage.stageHeight;
+				//var h:int = stage.stageHeight;
+				var wpx:int = Capabilities.screenResolutionX;
+				var hpy:int = Capabilities.screenResolutionY;
+				trace(hpy +":"+ navContainer.y +":"+ navContainer.height)
+				//navContainer.y = (navContainer.height - hpy)/2;
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:ViewNavigator id="navContainer" width="100%" height="100%" x="0" y="0" firstView="com.views.screens.LoginScreen"
+					 addedToStage="navContainer_addedToStageHandler(event)"
+					 creationPolicy="auto">
+	</s:ViewNavigator>
+	<components:BusyIndicator id="busyInd" width="100%" height="100%" visible="false"/>
+	<s:Label id="debug" text="Check" x="20" y="20" width="600" height="1000" visible="false" color="0xffffff"/>
+</s:Application>

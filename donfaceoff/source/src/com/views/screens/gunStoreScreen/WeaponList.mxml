@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		xmlns:s="library://ns.adobe.com/flex/spark"
+		addedToStage="list1_addedToStageHandler(event)"
+		>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.model.GunModel;
+			import com.model.Weapons;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
+			
+			import spark.events.IndexChangeEvent;
+			
+			
+			//[Bindable]
+			//private var primaryWeapon:GunModel;
+			
+			[Bindable]
+			private var padding:Number = 20;
+			
+			//w=360, h=221
+			[Bindable]
+			public var dp:ArrayCollection = new ArrayCollection();
+			
+			protected function list1_addedToStageHandler(event:Event):void
+			{
+				// TODO Auto-generated method stub
+				var weapons:Dictionary = Weapons.getInstance().getWeaponsList();
+				for(var item:String in weapons){
+					var weapon:GunModel = weapons[item];
+					if(weapon.id != 1){
+						trace("Error?");
+						dp.addItem(getWeaponData(weapon, 1));
+						dp.addItem(getWeaponData(weapon, 3));
+						dp.addItem(getWeaponData(weapon, 9));
+						dp.addItem(getWeaponData(weapon, 15));
+						dp.addItem(getWeaponData(weapon, 50));
+					}
+				}
+			}
+			
+			private function getWeaponData(weapon:GunModel, clipMultiplier:int):GunModel
+			{
+				var weaponGun:GunModel = new GunModel();
+				weaponGun.id = weapon.id;
+				weaponGun.name = weapon.name;
+				weaponGun.clipSize = weapon.clipSize;
+				weaponGun.costPerBullet = weapon.costPerBullet;
+				weaponGun.damagePerBullet = weapon.damagePerBullet;
+				weaponGun.roundsPerTap = weapon.roundsPerTap;
+				weaponGun.clipSizeMultiplier = clipMultiplier;
+				return weaponGun;
+			}
+			
+			protected function vgroup1_creationCompleteHandler(event:FlexEvent):void
+			{
+				
+			}
+			
+			public function updateWeaponList():void
+			{
+				for each(var obj:Object in weaponList.dataProvider){
+					//obj.enabled = false;
+					weaponList.dataProvider.itemUpdated(obj);
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	<s:List id="weaponList" dataProvider="{dp}" x="1169" y="396" width="795" height="527" 
+			horizontalScrollPolicy="off" itemRenderer="com.views.components.renderers.WeaponItemRenderer"
+			contentBackgroundAlpha="0">
+		<s:layout>
+			<s:VerticalLayout id="listLayout" variableRowHeight="false" rowHeight="527"/>
+		</s:layout>
+	</s:List>
+	<!--<s:Label id="debug" text="Check" x="20" y="20" width="300" height="500" color="0xffffff"/>-->
+	
+	<!--
+	<s:VGroup paddingTop="{padding}" paddingLeft="{padding}" paddingRight="{padding}" 
+			  paddingBottom="{padding}" creationComplete="vgroup1_creationCompleteHandler(event)"
+			  x="109" y="410" width="751" height="458">
+		<s:HGroup width="100%" horizontalAlign="center">
+			<s:Label text="{primaryWeapon.name}" color="0xffffff" maxDisplayedLines="1"/>
+			<s:Spacer width="100%"/>
+			<s:Label text="{primaryWeapon.costPerBullet * primaryWeapon.roundsPerTap * primaryWeapon.clipSize}" 
+					 maxDisplayedLines="1" color="0xffffff"/> 
+		</s:HGroup>
+		<s:Spacer height="100%"/>
+		<s:HGroup width="100%" horizontalAlign="center">
+			<s:Label text="ROF : {primaryWeapon.roundsPerTap} Damage : {primaryWeapon.damagePerBullet} Ammo : {primaryWeapon.clipSize} x 3 {dp.length}" 
+					 maxDisplayedLines="1" color="0xffffff"/>
+		</s:HGroup>
+	</s:VGroup>
+	-->
+</s:Group>

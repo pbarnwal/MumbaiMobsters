@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<screens:ViewScreen xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" xmlns:screens="com.views.screens.*"
+					>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.facebook.graph.Facebook;
+			import com.facebook.graph.FacebookMobile;
+			import com.facebook.graph.core.FacebookLimits;
+			import com.facebook.graph.data.FacebookAuthResponse;
+			import com.facebook.graph.data.FacebookSession;
+			import com.managers.AudioManager;
+			import com.model.Screens;
+			import com.model.UserCache;
+			import com.views.components.AlertComponent;
+			
+			import mx.events.FlexEvent;
+			
+			private var alert:AlertComponent;
+			private var fbWebView:StageWebView;
+			protected function viewscreen1_addedToStageHandler(event:Event):void
+			{
+				var loginMc:LoginMc = new LoginMc();
+				loginMc.width = stage.stageWidth;
+				loginMc.scaleY = loginMc.scaleX;
+				loginSprite.addChild(loginMc);
+				loginMc.btn_faceBook.buttonMode = true;
+				loginMc.btn_guest.buttonMode = true;
+				loginMc.btn_faceBook.addEventListener(MouseEvent.CLICK, facebookLoginHandler)
+				loginMc.btn_guest.addEventListener(MouseEvent.CLICK, guestLoginHandler)
+			}
+			
+			protected function facebookLoginHandler(event:MouseEvent):void
+			{
+				trace("Facebook login handler");
+				//FacebookMobile.init("366342546777730", callbackFn);
+				parentApplication.showBusyIndicator()
+				FacebookMobile.init("310052065687446", callbackFn);
+				AudioManager.getInstance().playButtonSound();
+			}
+			
+			protected function guestLoginHandler(event:MouseEvent):void
+			{
+				AudioManager.getInstance().playButtonSound();
+				UserCache.getInstance().resetFBDetails();
+				parentApplication.changeState(Screens.INTRO_SCREEN);
+			}
+			
+			public function callbackFn(success:Object, fail:Object):void
+			{
+				if(fail){
+					//No previous access token is found
+					trace("Failed - show web page for a new session");
+					fbWebView = new StageWebView();
+					fbWebView.addEventListener(ErrorEvent.ERROR, notLoadedHandler);
+					fbWebView.viewPort = new Rectangle(10, 10, stage.stageWidth - 20, stage.stageHeight-20);
+					FacebookMobile.login(onLogin, this.stage, ["read_stream", "publish_stream"], fbWebView, "wap");
+				}else if(success){
+					//Previous access token is found
+					trace("Success - already existed a session" + FacebookMobile.getSession().accessToken);
+					accessTokenFound();
+				}
+			}
+			
+			protected function onLogin(success:Object, fail:Object):void
+			{
+				trace("OnLogin");
+				if(success){
+					trace("Finally got the accesstoken:"+ FacebookMobile.getSession().accessToken);
+					//FacebookMobile.logout(logoutHandler)
+					accessTokenFound();
+				}else if(fail){
+					//raise pop up asking user to try again.
+					if(alert != null){
+						removePopUpHandler(null);
+					}
+					alert = new AlertComponent();
+					alert.message = "Please try again";
+					alert.addEventListener(AlertComponent.OK, removePopUpHandler);
+					addElement(alert);
+				}
+				
+			}
+			
+			protected function notLoadedHandler(event:ErrorEvent):void
+			{
+				parentApplication.hideBusyIndicator()
+				fbWebView.dispose();
+				if(alert != null){
+					removePopUpHandler(null);
+				}
+				alert = new AlertComponent();
+				alert.message = "Please try again";
+				alert.addEventListener(AlertComponent.OK, removePopUpHandler);
+				addElement(alert);
+			}
+			
+			protected function removePopUpHandler(event:Event):void
+			{
+				removeElement(alert)
+				alert = null;
+			}
+			
+			protected function accessTokenFound():void
+			{
+				parentApplication.hideBusyIndicator()
+				trace("Access Token found");
+				var userCache:UserCache = UserCache.getInstance();
+				var userObject:Object = FacebookMobile.getSession().user;
+				/* for(var each in userObject){
+					trace(each +":"+ userObject[each]);
+				} */
+				userCache.accessToken = FacebookMobile.getSession().accessToken;
+				userCache.fbLink = userObject.link;
+				userCache.fbUserId = userObject.id;
+				userCache.fbLoginName = userObject.username;
+				userCache.fbUserName = userObject.name;
+				userCache.fbPicture = "http://graph.facebook.com/"+ userObject.username +"/picture"
+				userCache.fbFriends = "https://graph.facebook.com/me/friends?access_token="+ userCache.accessToken;
+				//https://graph.facebook.com/me?fields=name,birthday,friends.limit(10).fields(id, picture, name)&access_token=AAAAAAITEghMBAO1mfawZCJd5XidyLYGsyCbALvZAz9kcMkMf8QurIMx495vZCZAxlrg70UxwYr2wDrZAJ7kZAZBlMElAwHy2iom34lTiJ9ZAnYV4ADkrzdnO
+				userCache.loadPlayerPhoto();
+				//user.link
+				//user.birthday (MM/DD/YYYY)
+				//username
+				//id
+				//gender
+				//timezone
+				//locale
+				//name
+				//last_name
+				//first_name
+				//updated_time
+				//verified 		
+				parentApplication.changeState(Screens.INTRO_SCREEN);
+			}
+			
+			protected function logoutHandler(s:Object):void
+			{
+				trace("Logout");
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:SpriteVisualElement id="loginSprite" x="0" y="0" width="100%" height="100%" addedToStage="viewscreen1_addedToStageHandler(event)"/>
+</screens:ViewScreen>

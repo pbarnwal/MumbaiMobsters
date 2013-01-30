@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<screens:ViewScreen xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" 
+					xmlns:screens="com.views.screens.*"
+					creationComplete="viewscreen1_creationCompleteHandler(event)"
+					viewDeactivate="viewscreen1_viewDeactivateHandler(event)">
+	<fx:Script>
+		<![CDATA[
+			import com.managers.AudioManager;
+			import com.model.Screens;
+			import com.model.UserCache;
+			
+			import flash.utils.setTimeout;
+			
+			import mx.events.FlexEvent;
+			
+			import spark.events.ViewNavigatorEvent;
+			
+			private var videoMc:IntroVideo;
+			
+			private var storytTsext:String="Recruitment is under way for a special commando force to save Mumbai from the grip of mobsters and terrorists. " +
+				"To win the coveted post, you have to confront the deadliest of the criminals in their hideous dens. " +
+				"You are given a Desert Eagle .50 pistol and sufficient ammunition for a faceoff in the factory hideout. " +
+				"Watch as you enter deeper into the Bad Lands; You will need special weapons, more ammunition and loads of luck to survive the increasing droves of mobsters out to get you."; 
+			private var counter:int = 0;
+			private var format : TextFormat = new TextFormat();
+			private var textField : TextField = new TextField();
+			private var textFieldMask:Sprite = new Sprite();
+			
+			protected function viewscreen1_creationCompleteHandler(event:FlexEvent):void
+			{
+				// TODO Auto-generated method stub
+				videoMc = new IntroVideo();
+				videoMc.width = stage.stageWidth;
+				videoMc.scaleY = videoMc.scaleX;
+				mainMov.addChild(videoMc);
+				//videoMc.addEventListener(Event.ENTER_FRAME, enterFrameHandler)
+				//videoMc.gotoAndPlay(2);
+				
+				//For Story
+				format.size = 20;
+				format.font = "Courier New";
+				format.bold = true;
+				format.color = 0x0000000;
+				textField.width = 375;
+				textField.height = 500;
+				textFieldMask.graphics.beginFill(0xff0000, 0.3);
+				textFieldMask.graphics.drawRect(204,168,375,500);
+				textFieldMask.graphics.endFill();
+				textField.selectable = false;
+				textField.wordWrap = true;
+				textField.defaultTextFormat = format;
+				textField.x = 204;
+				textField.y = 168;
+				textField.mask = textFieldMask;
+				videoMc.addChild(textField);
+				videoMc.addChild(textFieldMask);
+				addEventListener(Event.ENTER_FRAME, writeText);
+			}
+			
+			private function initText(string:String):void
+			{
+				storytTsext = string;
+				addEventListener(Event.ENTER_FRAME, writeText); 
+			}
+			
+			private function writeText(e:Event):void
+			{
+				if (counter <= storytTsext.length)
+				{
+					textField.text = storytTsext.substr(0,counter);
+					counter++;
+					/* if(textField.textHeight > 400)
+					{
+						textField.y = 550 - textField.textHeight;
+						textField.height = textField.height + 18;
+					} */
+				}
+				else
+				{
+					removeEventListener(Event.ENTER_FRAME,writeText);
+					//moveToNextScreen();
+				}
+			}
+
+			
+			protected function enterFrameHandler(e:Event):void
+			{
+				if(videoMc.currentFrame == videoMc.totalFrames){
+					videoMc.removeEventListener(Event.ENTER_FRAME, enterFrameHandler)
+					moveToNextScreen();
+				}
+			}
+			
+			protected function nextScreenHandler(e:MouseEvent):void
+			{
+				if(stage.hasEventListener(MouseEvent.CLICK)){
+					stage.removeEventListener(MouseEvent.CLICK, nextScreenHandler)
+				}
+				AudioManager.getInstance().playButtonSound();
+				moveToNextScreen();
+			}
+			
+			protected function moveToNextScreen():void
+			{
+				if(UserCache.getInstance().accessToken == ""){
+					parentApplication.changeState(Screens.MISSION_SELECTION_SCREEN);
+					//parentApplication.changeState(Screens.HELP_SCREEN);
+				}else{
+					parentApplication.changeState(Screens.CHALLENGE_SCREEN);
+				}
+			}
+			
+			protected function viewscreen1_viewDeactivateHandler(event:ViewNavigatorEvent):void
+			{
+				videoMc.stop();
+				if(videoMc.hasEventListener(Event.ENTER_FRAME)){
+					videoMc.removeEventListener(Event.ENTER_FRAME, enterFrameHandler);
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<s:SpriteVisualElement id="mainMov" width="100%" height="100%" />
+	
+	<s:Button click="nextScreenHandler(event)" label="Skip Intro" right="20" bottom="20"/>
+</screens:ViewScreen>

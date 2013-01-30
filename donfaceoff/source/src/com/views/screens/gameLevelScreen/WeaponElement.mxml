@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:SpriteVisualElement xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark"
+					   addedToStage="spritevisualelement1_addedToStageHandler(event)">
+	<fx:Script>
+		<![CDATA[
+			import com.model.GunModel;
+			import com.model.Weapons;
+			
+			import spark.primitives.Graphic;
+			
+			private var weapons:Weapons;
+			
+			private var gunMovie:MovieClip;
+			private var gunTimer:Timer;
+			private var currentGunModel:GunModel;
+
+			private var currentGun:int = 0;
+			
+			private var _reloading:Boolean;
+			
+			public function get reloading():Boolean
+			{
+				return _reloading;
+			}
+			
+			public function set gun(val:int):void
+			{
+				if(currentGun == val){
+					return;
+				}
+				currentGun = val;
+				weapons = Weapons.getInstance();
+				currentGunModel = weapons.getWeaponById(val);
+				gunMovie.allguns.gotoAndStop(currentGunModel.id);
+			}
+			public function get gun():int
+			{
+				return currentGun;
+			}
+			public function set move(val:int):void
+			{
+				if(val == 0){
+					gunMovie.allguns.gun.gotoAndStop(1);
+					gunMovie.allguns.gun.fire.gotoAndPlay(1);
+				}else if(val == -1){
+					gunMovie.allguns.gun.gotoAndStop(2);
+					gunMovie.allguns.gun.fire.gotoAndPlay(1);
+				}else if(val == -2){
+					gunMovie.allguns.gun.gotoAndStop(3);
+					gunMovie.allguns.gun.fire.gotoAndPlay(1);
+				}else if(val == 1){
+					gunMovie.allguns.gun.gotoAndStop(4);
+					gunMovie.allguns.gun.fire.gotoAndPlay(1);
+				}else if(val == 2){
+					gunMovie.allguns.gun.gotoAndStop(5);
+					gunMovie.allguns.gun.fire.gotoAndPlay(1);
+				}
+				//gunTimer.stop();
+				//gunTimer.start();
+			}
+			
+			protected function spritevisualelement1_addedToStageHandler(event:Event):void
+			{
+				// TODO Auto-generated method stub
+				graphics.beginFill(0x0000ff,0);
+				graphics.drawRect(0,0, stage.stageWidth, stage.stageHeight);
+				graphics.endFill();
+				
+				var scaleXVal:Number = stage.stageWidth/2048;
+				scaleY = scaleXVal;
+				scaleX = scaleXVal;
+				
+				gunTimer = new Timer(1000);
+				gunTimer.addEventListener(TimerEvent.TIMER, gunResetHandler)
+					
+				gunMovie = new AnimatedGunMc();
+				addChild(gunMovie);
+				//gunMovie.allguns.y -= 400;
+			}
+			
+			protected function gunResetHandler(e:TimerEvent):void
+			{
+				gunTimer.stop();
+				gunTimer.reset();
+				move = 0;
+			}
+			
+			public function damageCaused():int
+			{
+				return (currentGunModel.damagePerBullet * currentGunModel.roundsPerTap);
+			}
+			
+			public function playReloadAnimation():void
+			{
+				trace("Reloading");
+				gunMovie.allguns.gun.addEventListener(Event.ENTER_FRAME, reloadingFinishHandler)
+				gunMovie.allguns.gun.gotoAndPlay("reload");
+				_reloading = true;
+			}
+			
+			private function reloadingFinishHandler(e:Event):void
+			{
+				if(gunMovie.allguns.gun.currentFrame >= 1 && gunMovie.allguns.gun.currentFrame <= 5){
+					gunMovie.allguns.gun.removeEventListener(Event.ENTER_FRAME, reloadingFinishHandler)
+					_reloading = false;
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+</s:SpriteVisualElement>

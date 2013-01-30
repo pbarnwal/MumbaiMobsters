@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" width="100%" height="100%"
+		 addedToStage="group1_addedToStageHandler(event)">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.managers.AudioManager;
+			
+			public static const OK:String = "ok";
+			
+			[Bindable]
+			public var message:String = "Time Up!!!"; 
+			
+			public function setSize(w:int, h:int):void
+			{
+				holder.width = w;
+				holder.height = h;
+			}
+			protected function button1_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				dispatchEvent(new Event(OK,true));
+			}
+			
+			protected function group1_addedToStageHandler(event:Event):void
+			{
+				// TODO Auto-generated method stub
+				AudioManager.getInstance().playErrorSound();
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:layout>
+		<s:BasicLayout />
+	</s:layout>
+	
+	<s:Rect width="100%" height="100%">
+		<s:fill> 
+			<s:SolidColor color="0x333333" alpha="0.5" />
+		</s:fill>
+	</s:Rect>
+	
+	
+	<s:Group id="holder" width="300" height="300" x="{(this.width-holder.width)/2}" y="{(this.height-holder.height)/2}">
+		<s:layout>
+			<s:BasicLayout/>
+		</s:layout>
+		
+		<s:Rect radiusX="10" radiusY="10" width="100%" height="100%">
+			<s:fill> 
+				<s:SolidColor color="0xFFFFFF" alpha="0.8" />
+			</s:fill>
+		</s:Rect>
+		
+		<s:VGroup horizontalAlign="center" verticalAlign="middle" height="100%" width="100%">
+			<s:Label text="{message}" width="100%" textAlign="center"/>
+			<s:Spacer height="10" />
+			<s:Button label="OK" click="button1_clickHandler(event)"/>
+		</s:VGroup>
+		
+	</s:Group>
+	
+	
+</s:Group>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<screens:ViewScreen xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" 
+					xmlns:screens="com.views.screens.*"
+					touchTap="viewscreen1_touchTapHandler()"
+					click="viewscreen1_touchTapHandler()">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.managers.AudioManager;
+			import com.model.Screens;
+			
+			import mx.events.FlexEvent;
+			protected function viewscreen1_touchTapHandler():void
+			{
+				trace("Help Screen");
+				parentApplication.changeState(Screens.CURRENT_SCREEN+1);
+			}
+		]]>
+	</fx:Script>
+	
+	<screens:layout>
+		<s:HorizontalLayout horizontalAlign="left" verticalAlign="top" />
+	</screens:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<s:BitmapImage id="img" source="{HelpScreenMc}" scaleMode="letterbox"
+				   width="100%"/>
+	
+</screens:ViewScreen>

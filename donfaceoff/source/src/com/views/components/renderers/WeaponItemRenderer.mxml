@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark"
+					width="795" height="527" 
+					autoDrawBackground="false" dataChange="itemrenderer1_dataChangeHandler(event)"
+					creationComplete="itemrenderer1_creationCompleteHandler(event)"
+					currentStateChange="itemrenderer1_currentStateChangeHandler(event)">
+	<fx:Script>
+		<![CDATA[
+			import com.managers.ConfigurationManager;
+			import com.model.UserCache;
+			import com.views.screens.gunStoreScreen.WeaponList;
+			
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			import mx.events.StateChangeEvent;
+			
+			import spark.managers.PersistenceManager;
+			
+			[Bindable]
+			private var ratio:Number = 1;
+			
+			[Bindable]
+			private var padding:Number = 30;
+				
+			[Bindable]
+			private var clipSizeIndicator:String = "";
+			
+			private var containerMc:GunItemRendererMc;
+			
+			protected function itemrenderer1_dataChangeHandler(event:FlexEvent):void
+			{
+				updateCurrentState();
+			}
+			
+			private function updateCurrentState():void
+			{
+				/*var persistenceManager:PersistenceManager = new PersistenceManager();
+				if(persistenceManager.load()){
+					var weaponsProp:Object = persistenceManager.getProperty("weapons_purchased");
+					if(weaponsProp != null){
+						var weaponsPurchased:String = weaponsProp.toString();
+						trace("weaponsPurchased:"+weaponsPurchased +"<<>>"+ data.id +"_"+ data.clipSizeMultiplier);
+						var arrWeapons:Array = weaponsPurchased.split(",");
+						var isEnabled:Boolean = true;
+						for(var i:int = 0; i<arrWeapons.length; i++){
+							var temp:Array = arrWeapons[i].split("_");
+							var weaponId:String = temp[0];
+							var weaponClipSize:String = temp[1];
+							if( weaponId == data.id && weaponClipSize == data.clipSizeMultiplier){
+								isEnabled = false;
+								break;
+							}
+						}
+						this.enabled = isEnabled;
+						if(isEnabled){
+							currentState = "normal";
+						}else{
+							currentState = "disabled";
+						}
+					}
+				}*/
+				
+				if(containerMc == null || !container.contains(containerMc)){
+					return;
+				}
+				
+				var weaponId:int = UserCache.getInstance().premiumGunOpted;
+				var weaponClipSize:int = UserCache.getInstance().purchasedClipSize;
+				if(!(weaponId == 0 && weaponClipSize == 0))
+				{
+					/* if(weaponClipSize == 0){
+						weaponClipSize = 1;
+					} */
+					if(weaponId == data.id && weaponClipSize == data.clipSizeMultiplier){
+						currentState = "disabled";
+						containerMc.mc_gun_image.gotoAndStop(((weaponId-2)*2)+2);
+					}else{
+						currentState = "normal";
+						containerMc.mc_gun_image.gotoAndStop(((data.id-2)*2)+1);
+					}
+				}else{
+					currentState = "normal";
+					containerMc.mc_gun_image.gotoAndStop(((data.id-2)*2)+1);
+				}
+				
+				containerMc.txt_gun_name.text = data.name;
+				var amount:int = 0;
+				if(data.clipSizeMultiplier > 1){
+					amount = data.costPerBullet * data.roundsPerTap * data.clipSize * (data.clipSizeMultiplier+1);
+				}else{
+					amount = data.costPerBullet * data.roundsPerTap * data.clipSize * data.clipSizeMultiplier;
+				}
+				
+				containerMc.txt_amount.text = ConfigurationManager.getInstance().getCurrencyFormat(amount);
+				containerMc.txt_rof.text = String(data.roundsPerTap);
+				containerMc.txt_damage.text = String(data.damagePerBullet);
+				
+				if(data.clipSizeMultiplier == 50){
+					containerMc.txt_ammo.text = "Unltd";
+				}else{
+					containerMc.txt_ammo.text = data.clipSize + " x "+ data.clipSizeMultiplier
+				}
+				
+			}
+			
+			protected function itemrenderer1_creationCompleteHandler(event:FlexEvent):void
+			{
+				// TODO Auto-generated method stub
+				this.width = 795;
+				this.height = 527;
+				
+				containerMc = new GunItemRendererMc();
+				containerMc.mc_gun_image.gotoAndStop(1);
+				containerMc.mc_selection_border.visible = false;
+				container.addChild(containerMc);
+				updateCurrentState();
+			}
+			
+			protected function itemrenderer1_currentStateChangeHandler(event:StateChangeEvent):void
+			{
+				// TODO Auto-generated method stub
+				if(containerMc != null && container.contains(containerMc)){
+					if(event.newState == "selected" || event.newState == "disabled"){
+						containerMc.mc_selection_border.visible = true;
+					}else if(event.newState == "normal"){
+						containerMc.mc_selection_border.visible = false;
+					}
+				}
+			}
+			
+		]]>
+	</fx:Script>
+
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:states> 
+		<s:State name="normal"/> 
+		<s:State name="selected"/>
+		<s:State name="disabled"/>
+	</s:states> 
+	
+	<s:layout>
+		<s:HorizontalLayout horizontalAlign="center" verticalAlign="middle"/>
+	</s:layout>
+	<s:SpriteVisualElement id="container" x="10" y="10" width="779" height="503" />
+	<!--
+	<s:Group id="container" width="780" height="503">
+		<s:Rect radiusX="10" radiusY="10" width="100%" height="100%">
+			<s:fill>
+				<s:BitmapFill source="{ListBgMc}" fillMode="scale"/>
+			</s:fill>
+		</s:Rect>
+		<s:Rect id="selectedBg" radiusX="10" radiusY="10" width="100%" height="100%" 
+				visible.normal="false" visible.selected="true" visible.disabled="true">
+			<s:fill>
+				<s:SolidColor color="0xff0000" color.disabled="0x00ff00" alpha=".2"/>
+			</s:fill>
+		</s:Rect>
+		
+		<s:VGroup width="751" height="100%" paddingTop="{padding}" 
+				  paddingLeft="{padding}" paddingRight="{padding}" paddingBottom="{padding}">
+			<s:HGroup width="751" horizontalAlign="center">
+				<s:Group width="100%">
+					<s:Label text="{data.name}" color="0xffffff" maxDisplayedLines="1" left="0"/>
+					<s:Label text="{data.costPerBullet * data.roundsPerTap * data.clipSize * data.clipSizeMultiplier}" 
+							 maxDisplayedLines="1" color="0xffffff" textAlign="right" right="{padding}" paddingRight="{padding}"/>
+				</s:Group>
+				 
+			</s:HGroup>
+			<s:Spacer height="100%"/>
+			<s:HGroup width="100%" horizontalAlign="center">
+				<s:Label text="ROF : {data.roundsPerTap} Damage : {data.damagePerBullet} Ammo : {data.clipSize} x {clipSizeIndicator}" 
+						 maxDisplayedLines="1" color="0xffffff" width="100%" textAlign="center"/>
+			</s:HGroup>
+		</s:VGroup>
+	</s:Group>
+	-->
+</s:ItemRenderer>
